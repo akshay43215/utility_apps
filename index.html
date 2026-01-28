@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Utility Tools</title>
+  <meta name="description" content="Free online utility tools for developers and daily use" />
+
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .header {
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+
+    .header p {
+      color: var(--muted);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 1rem;
+    }
+
+    .tool-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .tool-list li {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.2rem;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .tool-list li:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .tool-list a {
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .tool-list a span {
+      display: block;
+      margin-top: 0.3rem;
+      font-size: 0.85rem;
+      color: var(--accent);
+    }
+
+    .loading {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <h1>🛠 Utility Tools</h1>
+    <p>Simple, fast & free tools</p>
+  </header>
+
+  <main class="container">
+    <ul id="toolList" class="tool-list">
+      <li class="loading">Loading tools...</li>
+    </ul>
+  </main>
+
+  <footer class="footer">
+    <p>© 2026 YourDomain</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+<script>
+  const listEl = document.getElementById("toolList");
+
+  fetch("lists.json")
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to load list");
+      return res.json();
+    })
+    .then(tools => {
+      listEl.innerHTML = "";
+
+      tools.forEach(tool => {
+        const li = document.createElement("li");
+
+        li.innerHTML = `
+          <a href="${tool.url}" target="_blank" rel="noopener noreferrer">
+            ${tool.name}
+            <span>Open tool →</span>
+          </a>
+        `;
+
+        listEl.appendChild(li);
+      });
+    })
+    .catch(() => {
+      listEl.innerHTML = `
+        <li class="loading">Unable to load tools.</li>
+      `;
+    });
+</script>
+</html>

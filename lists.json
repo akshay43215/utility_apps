@@ -1,0 +1,22 @@
+[
+  {
+    "name": "puzzle game",
+    "url": "https://mind-game-vite-app.vercel.app"
+  },
+  {
+    "name": "CDN Image Uploader",
+    "url": "https://node-api-render-test.onrender.com/admin/imageUpload.html"
+  },
+  {
+    "name": "Base64 Encoder / Decoder",
+    "url": "https://getdeals.vercel.app/v2.html"
+  },
+  {
+    "name": "Affiliate Amazon Admin",
+    "url": "https://openapi-wof3.onrender.com/public/update.html"
+  },
+  {
+    "name": "Text Compare Tool",
+    "url": "https://akshay43215.github.io/utility_apps/compareText.html"
+  }
+]
