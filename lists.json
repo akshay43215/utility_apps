@@ -8,7 +8,7 @@
     "url": "https://node-api-render-test.onrender.com/admin/imageUpload.html"
   },
   {
-    "name": "Base64 Encoder / Decoder",
+    "name": "Deals API Amazon",
     "url": "https://getdeals.vercel.app/v2.html"
   },
   {
@@ -18,5 +18,9 @@
   {
     "name": "Text Compare Tool",
     "url": "https://akshay43215.github.io/utility_apps/compareText.html"
+  },
+  {
+    "name": "Image Text Extract Tool",
+    "url": "https://akshay43215.github.io/utility_apps/extract.html"
   }
 ]
