@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCAN/EXTRACT — Image Text Recognition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+        
+        :root {
+            --primary: #00ff41;
+            --secondary: #ff006e;
+            --bg-dark: #0a0e27;
+            --bg-card: #1a1f3a;
+            --text: #e0e0e0;
+            --text-dim: #8892b0;
+            --border: #2a3f5f;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 65, 0.03) 2px, rgba(0, 255, 65, 0.03) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0, 255, 65, 0.03) 2px, rgba(0, 255, 65, 0.03) 4px);
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            position: relative;
+        }
+        
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(3rem, 8vw, 6rem);
+            letter-spacing: 0.1em;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            animation: glitch 5s infinite;
+        }
+        
+        @keyframes glitch {
+            0%, 90%, 100% {
+                text-shadow: none;
+            }
+            91% {
+                text-shadow: 2px 0 var(--secondary), -2px 0 var(--primary);
+            }
+            93% {
+                text-shadow: -2px 0 var(--secondary), 2px 0 var(--primary);
+            }
+        }
+        
+        .tagline {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+        }
+        
+        .controls {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--primary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        select, input[type="range"] {
+            width: 100%;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+        
+        /* OCR Mode Toggle Buttons */
+        .ocr-mode-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .ocr-mode-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        .ocr-mode-btn {
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            color: var(--text-dim);
+            padding: 12px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            text-align: left;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ocr-mode-btn::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: linear-gradient(90deg, var(--primary), transparent);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .ocr-mode-btn:hover {
+            border-color: var(--primary);
+            color: var(--text);
+        }
+        
+        .ocr-mode-btn:hover::before {
+            width: 100%;
+            opacity: 0.1;
+        }
+        
+        .ocr-mode-btn.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(0, 255, 65, 0.05);
+        }
+        
+        .ocr-mode-btn.active::before {
+            width: 4px;
+            opacity: 1;
+            background: var(--primary);
+        }
+        
+        .ocr-mode-title {
+            font-weight: 700;
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        .ocr-mode-desc {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            display: block;
+        }
+        
+        .ocr-mode-btn.active .ocr-mode-desc {
+            color: rgba(0, 255, 65, 0.7);
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .slider-value {
+            min-width: 50px;
+            text-align: right;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            padding: 0;
+            height: 6px;
+            background: var(--bg-dark);
+            outline: none;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        
+        .upload-zone {
+            background: var(--bg-card);
+            border: 3px dashed var(--border);
+            border-radius: 4px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 40px;
+        }
+        
+        .upload-zone::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+            border-radius: 4px;
+        }
+        
+        .upload-zone:hover::before,
+        .upload-zone.dragover::before {
+            opacity: 0.2;
+        }
+        
+        .upload-zone:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .upload-zone.dragover {
+            border-color: var(--secondary);
+            background: rgba(255, 0, 110, 0.1);
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            display: inline-block;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .upload-text {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 900px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 30px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .panel:hover::before {
+            opacity: 1;
+        }
+        
+        .panel-header {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 0.1em;
+            margin-bottom: 20px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .panel-header::before {
+            content: '▸';
+            color: var(--secondary);
+        }
+        
+        #preview-container {
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #image-preview {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 4px;
+            box-shadow: 0 8px 32px rgba(0, 255, 65, 0.2);
+            display: none;
+        }
+        
+        #image-preview.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .placeholder {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+        
+        #extracted-text {
+            background: rgba(10, 14, 39, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 20px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        #extracted-text::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #extracted-text::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+        
+        #extracted-text::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+        
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .progress-container.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-dark);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            width: 0%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .progress-text {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            text-align: center;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--primary);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+        
+        button:hover::before {
+            left: 0;
+        }
+        
+        button:hover {
+            color: var(--bg-dark);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button:disabled:hover {
+            color: var(--primary);
+        }
+        
+        button:disabled::before {
+            display: none;
+        }
+        
+        button.secondary {
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+        
+        button.secondary::before {
+            background: var(--secondary);
+        }
+        
+        button.secondary:hover {
+            color: var(--bg-dark);
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .empty-state {
+            color: var(--text-dim);
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+        
+        canvas {
+            display: none;
+        }
+        
+        /* Privacy Notice */
+        .privacy-notice {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            max-width: 400px;
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            border-radius: 4px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 255, 65, 0.3);
+            z-index: 1000;
+            animation: slideIn 0.5s ease;
+            display: none;
+        }
+        
+        .privacy-notice.show {
+            display: block;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(450px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .privacy-notice.hiding {
+            animation: slideOut 0.5s ease forwards;
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(450px);
+                opacity: 0;
+            }
+        }
+        
+        .privacy-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .privacy-icon {
+            font-size: 1.5rem;
+        }
+        
+        .privacy-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.3rem;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+        }
+        
+        .privacy-content {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--text);
+            margin-bottom: 20px;
+        }
+        
+        .privacy-highlight {
+            color: var(--primary);
+            font-weight: 700;
+        }
+        
+        .privacy-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .privacy-btn {
+            flex: 1;
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-dark);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .privacy-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--primary);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+        
+        .privacy-btn:hover::before {
+            left: 0;
+        }
+        
+        .privacy-btn:hover {
+            color: var(--bg-dark);
+        }
+        
+        .privacy-btn.secondary {
+            border-color: var(--text-dim);
+            color: var(--text-dim);
+        }
+        
+        .privacy-btn.secondary::before {
+            background: var(--text-dim);
+        }
+        
+        @media (max-width: 500px) {
+            .privacy-notice {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+        
+        /* Privacy Modal */
+        .privacy-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 39, 0.95);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .privacy-modal.show {
+            display: flex;
+        }
+        
+        .privacy-modal-content {
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            border-radius: 4px;
+            padding: 40px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .privacy-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px 10px;
+            transition: color 0.3s ease;
+        }
+        
+        .privacy-modal-close:hover {
+            color: var(--primary);
+        }
+        
+        .privacy-modal h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+        
+        .privacy-modal h3 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.3rem;
+            letter-spacing: 0.05em;
+            color: var(--secondary);
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        
+        .privacy-modal p {
+            font-size: 0.9rem;
+            line-height: 1.7;
+            color: var(--text);
+            margin-bottom: 15px;
+        }
+        
+        .privacy-modal ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .privacy-modal li {
+            font-size: 0.9rem;
+            line-height: 1.7;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+        
+        .privacy-modal strong {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SCAN/EXTRACT</h1>
+            <p class="tagline">Enhanced Image Text Recognition</p>
+        </header>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>OCR Mode</label>
+                <div class="ocr-mode-grid">
+                    <button class="ocr-mode-btn" data-mode="0">
+                        <span class="ocr-mode-title">OSD</span>
+                        <span class="ocr-mode-desc">Orientation & Script Detection</span>
+                    </button>
+                    <button class="ocr-mode-btn" data-mode="1">
+                        <span class="ocr-mode-title">Auto + OSD</span>
+                        <span class="ocr-mode-desc">Auto Segmentation with OSD</span>
+                    </button>
+                    <button class="ocr-mode-btn active" data-mode="3">
+                        <span class="ocr-mode-title">Automatic</span>
+                        <span class="ocr-mode-desc">Fully Automatic (Default)</span>
+                    </button>
+                    <button class="ocr-mode-btn" data-mode="4">
+                        <span class="ocr-mode-title">Single Column</span>
+                        <span class="ocr-mode-desc">Variable Text Sizes</span>
+                    </button>
+                    <button class="ocr-mode-btn" data-mode="6">
+                        <span class="ocr-mode-title">Uniform Block</span>
+                        <span class="ocr-mode-desc">Single Block of Text</span>
+                    </button>
+                    <button class="ocr-mode-btn" data-mode="7">
+                        <span class="ocr-mode-title">Single Line</span>
+                        <span class="ocr-mode-desc">One Line of Text</span>
+                    </button>
+                    <button class="ocr-mode-btn" data-mode="8">
+                        <span class="ocr-mode-title">Single Word</span>
+                        <span class="ocr-mode-desc">One Word Only</span>
+                    </button>
+                    <button class="ocr-mode-btn" data-mode="11">
+                        <span class="ocr-mode-title">Sparse Text</span>
+                        <span class="ocr-mode-desc">Scattered Text Elements</span>
+                    </button>
+                    <button class="ocr-mode-btn" data-mode="13">
+                        <span class="ocr-mode-title">Raw Line</span>
+                        <span class="ocr-mode-desc">No Layout Analysis</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>Image Enhancement</label>
+                <div class="slider-container">
+                    <span style="color: var(--text-dim); font-size: 0.85rem; min-width: 80px;">Contrast:</span>
+                    <input type="range" id="contrast" min="50" max="200" value="100" step="10">
+                    <span class="slider-value" id="contrastValue">100%</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="slider-container">
+                    <span style="color: var(--text-dim); font-size: 0.85rem; min-width: 80px;">Brightness:</span>
+                    <input type="range" id="brightness" min="50" max="200" value="100" step="10">
+                    <span class="slider-value" id="brightnessValue">100%</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="slider-container">
+                    <span style="color: var(--text-dim); font-size: 0.85rem; min-width: 80px;">Sharpness:</span>
+                    <input type="range" id="sharpness" min="0" max="200" value="100" step="10">
+                    <span class="slider-value" id="sharpnessValue">100%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">Drop image here or click to select</div>
+            <div class="upload-hint">Supports: JPG, PNG, GIF, BMP, WebP</div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Initializing...</div>
+        </div>
+        
+        <div class="content-grid">
+            <div class="panel">
+                <div class="panel-header">Source Image</div>
+                <div id="preview-container">
+                    <img id="image-preview" alt="Preview">
+                    <div class="placeholder empty-state">No image loaded</div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">Extracted Text</div>
+                <div id="extracted-text" class="empty-state">Waiting for image to scan...</div>
+                <div class="actions">
+                    <button id="copyBtn" disabled>Copy Text</button>
+                    <button id="downloadBtn" class="secondary" disabled>Download TXT</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="charCount">0</div>
+                <div class="stat-label">Characters</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="wordCount">0</div>
+                <div class="stat-label">Words</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="lineCount">0</div>
+                <div class="stat-label">Lines</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="confidence">0%</div>
+                <div class="stat-label">Confidence</div>
+            </div>
+        </div>
+        
+        <footer>
+            Powered by Tesseract.js OCR Engine — Enhanced Processing Mode
+            <br>
+            <a href="#" id="privacyLink" style="color: var(--primary); text-decoration: none; margin-top: 10px; display: inline-block;">Privacy & Data Usage Policy</a>
+        </footer>
+    </div>
+
+    <!-- Privacy Notice Banner -->
+    <div class="privacy-notice" id="privacyNotice">
+        <div class="privacy-header">
+            <span class="privacy-icon">🔒</span>
+            <div class="privacy-title">Privacy Notice</div>
+        </div>
+        <div class="privacy-content">
+            All image processing happens <span class="privacy-highlight">entirely in your browser</span>. No images or text are uploaded to any server. Your data never leaves your device.
+        </div>
+        <div class="privacy-actions">
+            <button class="privacy-btn" id="acknowledgeBtn">Got It</button>
+            <button class="privacy-btn secondary" id="learnMoreBtn">Learn More</button>
+        </div>
+    </div>
+
+    <!-- Privacy Modal -->
+    <div class="privacy-modal" id="privacyModal">
+        <div class="privacy-modal-content">
+            <button class="privacy-modal-close" id="modalCloseBtn">×</button>
+            
+            <h2>Privacy & Data Usage</h2>
+            
+            <h3>🔒 Complete Privacy</h3>
+            <p>
+                This application is built with your privacy as the top priority. All optical character recognition (OCR) 
+                processing happens <strong>entirely within your web browser</strong> using client-side JavaScript.
+            </p>
+            
+            <h3>📁 No Data Upload</h3>
+            <p>Your images and extracted text are processed locally and are:</p>
+            <ul>
+                <li><strong>Never uploaded</strong> to any external servers</li>
+                <li><strong>Never stored</strong> in any database</li>
+                <li><strong>Never transmitted</strong> over the internet</li>
+                <li><strong>Never shared</strong> with third parties</li>
+            </ul>
+            
+            <h3>💾 Local Processing</h3>
+            <p>
+                The Tesseract.js OCR engine runs directly in your browser. When you upload an image:
+            </p>
+            <ul>
+                <li>The image is loaded into your browser's memory</li>
+                <li>Text recognition happens on your device's CPU</li>
+                <li>Results are displayed immediately in your browser</li>
+                <li>All data is cleared when you close the tab</li>
+            </ul>
+            
+            <h3>🌐 External Resources</h3>
+            <p>
+                The app loads the following resources from CDNs to function:
+            </p>
+            <ul>
+                <li><strong>Tesseract.js library</strong> - OCR engine (unpkg.com)</li>
+                <li><strong>Language data files</strong> - OCR training data (tessdata.projectnaptha.com)</li>
+                <li><strong>Font files</strong> - UI typography (Google Fonts)</li>
+            </ul>
+            <p>
+                These resources are loaded once and cached. <strong>No image data is sent to these services.</strong>
+            </p>
+            
+            <h3>🍪 Storage</h3>
+            <p>
+                This application uses localStorage only to remember that you've acknowledged this privacy notice. 
+                No other data is stored on your device.
+            </p>
+            
+            <h3>✅ Your Control</h3>
+            <p>
+                You have complete control over your data:
+            </p>
+            <ul>
+                <li>Images remain on your device only</li>
+                <li>You can clear browser cache to remove downloaded libraries</li>
+                <li>Closing the tab immediately clears all processed data</li>
+                <li>No accounts, tracking, or analytics</li>
+            </ul>
+            
+            <h3>📜 Open Source</h3>
+            <p>
+                This application is a self-contained HTML file. You can inspect the source code to verify 
+                that no data transmission occurs. The entire application runs offline after initial library downloads.
+            </p>
+            
+            <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--text-dim);">
+                Last updated: January 30, 2026
+            </p>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
+    <script>
+        window.addEventListener('load', function() {
+            if (typeof Tesseract === 'undefined') {
+                document.getElementById('extracted-text').innerHTML = '<div class="empty-state" style="color: var(--secondary);">Failed to load OCR library. Please refresh the page.</div>';
+                return;
+            }
+            initializeApp();
+        });
+        
+        function initializeApp() {
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            const imagePreview = document.getElementById('image-preview');
+            const extractedText = document.getElementById('extracted-text');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const copyBtn = document.getElementById('copyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const stats = document.getElementById('stats');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const ocrModeButtons = document.querySelectorAll('.ocr-mode-btn');
+            const contrastSlider = document.getElementById('contrast');
+            const brightnessSlider = document.getElementById('brightness');
+            const sharpnessSlider = document.getElementById('sharpness');
+            const contrastValue = document.getElementById('contrastValue');
+            const brightnessValue = document.getElementById('brightnessValue');
+            const sharpnessValue = document.getElementById('sharpnessValue');
+            
+            // Privacy notice elements
+            const privacyNotice = document.getElementById('privacyNotice');
+            const privacyModal = document.getElementById('privacyModal');
+            const acknowledgeBtn = document.getElementById('acknowledgeBtn');
+            const learnMoreBtn = document.getElementById('learnMoreBtn');
+            const modalCloseBtn = document.getElementById('modalCloseBtn');
+            const privacyLink = document.getElementById('privacyLink');
+            
+            let currentText = '';
+            let currentImageData = null;
+            let selectedOcrMode = '3'; // Default mode
+            
+            // Privacy notice handling
+            const hasAcknowledged = localStorage.getItem('privacyAcknowledged');
+            if (!hasAcknowledged) {
+                setTimeout(() => {
+                    privacyNotice.classList.add('show');
+                }, 1000);
+            }
+            
+            acknowledgeBtn.addEventListener('click', () => {
+                localStorage.setItem('privacyAcknowledged', 'true');
+                privacyNotice.classList.add('hiding');
+                setTimeout(() => {
+                    privacyNotice.classList.remove('show', 'hiding');
+                }, 500);
+            });
+            
+            learnMoreBtn.addEventListener('click', () => {
+                privacyModal.classList.add('show');
+                privacyNotice.classList.add('hiding');
+                setTimeout(() => {
+                    privacyNotice.classList.remove('show', 'hiding');
+                }, 500);
+            });
+            
+            modalCloseBtn.addEventListener('click', () => {
+                privacyModal.classList.remove('show');
+                localStorage.setItem('privacyAcknowledged', 'true');
+            });
+            
+            privacyLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                privacyModal.classList.add('show');
+            });
+            
+            privacyModal.addEventListener('click', (e) => {
+                if (e.target === privacyModal) {
+                    privacyModal.classList.remove('show');
+                    localStorage.setItem('privacyAcknowledged', 'true');
+                }
+            });
+            
+            // OCR Mode toggle buttons
+            ocrModeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    ocrModeButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedOcrMode = btn.dataset.mode;
+                    if (currentImageData) processImage(currentImageData);
+                });
+            });
+            
+            // Update slider values
+            contrastSlider.addEventListener('input', (e) => {
+                contrastValue.textContent = e.target.value + '%';
+                if (currentImageData) processImage(currentImageData);
+            });
+            
+            brightnessSlider.addEventListener('input', (e) => {
+                brightnessValue.textContent = e.target.value + '%';
+                if (currentImageData) processImage(currentImageData);
+            });
+            
+            sharpnessSlider.addEventListener('input', (e) => {
+                sharpnessValue.textContent = e.target.value + '%';
+                if (currentImageData) processImage(currentImageData);
+            });
+            
+            // Upload zone interactions
+            uploadZone.addEventListener('click', () => fileInput.click());
+            
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+            
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+            
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    handleImage(file);
+                }
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleImage(file);
+                }
+            });
+            
+            function handleImage(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentImageData = e.target.result;
+                    imagePreview.src = currentImageData;
+                    imagePreview.classList.add('show');
+                    document.querySelector('#preview-container .placeholder').style.display = 'none';
+                    processImage(currentImageData);
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            function preprocessImage(imageData) {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        
+                        // Apply filters
+                        const contrast = contrastSlider.value / 100;
+                        const brightness = brightnessSlider.value / 100;
+                        const sharpness = sharpnessSlider.value / 100;
+                        
+                        ctx.filter = `contrast(${contrast}) brightness(${brightness})`;
+                        ctx.drawImage(img, 0, 0);
+                        
+                        // Apply sharpening if needed
+                        if (sharpness > 1) {
+                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const data = imageData.data;
+                            
+                            // Simple sharpening using a 3x3 kernel
+                            const factor = (sharpness - 1) * 0.5;
+                            const kernel = [
+                                0, -factor, 0,
+                                -factor, 1 + 4 * factor, -factor,
+                                0, -factor, 0
+                            ];
+                            
+                            const tempData = new Uint8ClampedArray(data);
+                            const width = canvas.width;
+                            
+                            for (let y = 1; y < canvas.height - 1; y++) {
+                                for (let x = 1; x < width - 1; x++) {
+                                    for (let c = 0; c < 3; c++) {
+                                        let sum = 0;
+                                        for (let ky = -1; ky <= 1; ky++) {
+                                            for (let kx = -1; kx <= 1; kx++) {
+                                                const idx = ((y + ky) * width + (x + kx)) * 4 + c;
+                                                sum += tempData[idx] * kernel[(ky + 1) * 3 + (kx + 1)];
+                                            }
+                                        }
+                                        const idx = (y * width + x) * 4 + c;
+                                        data[idx] = Math.max(0, Math.min(255, sum));
+                                    }
+                                }
+                            }
+                            
+                            ctx.putImageData(imageData, 0, 0);
+                        }
+                        
+                        resolve(canvas.toDataURL());
+                    };
+                    img.src = imageData;
+                });
+            }
+            
+            async function processImage(imageData) {
+                progressContainer.classList.add('show');
+                extractedText.innerHTML = '<div class="empty-state">Processing image...</div>';
+                copyBtn.disabled = true;
+                downloadBtn.disabled = true;
+                stats.style.display = 'none';
+                
+                try {
+                    progressText.textContent = 'Preprocessing image...';
+                    progressFill.style.width = '10%';
+                    
+                    const processedImage = await preprocessImage(imageData);
+                    
+                    progressText.textContent = 'Initializing OCR engine...';
+                    progressFill.style.width = '20%';
+                    
+                    const worker = await Tesseract.createWorker({
+                        workerPath: 'https://unpkg.com/tesseract.js@v4.1.1/dist/worker.min.js',
+                        langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+                        corePath: 'https://unpkg.com/tesseract.js-core@v4.0.2/tesseract-core.wasm.js',
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                const progress = 60 + Math.round(m.progress * 35);
+                                progressFill.style.width = progress + '%';
+                                progressText.textContent = `Recognizing text: ${Math.round(m.progress * 100)}%`;
+                            } else if (m.status === 'loading tesseract core') {
+                                progressText.textContent = 'Loading OCR Core...';
+                                progressFill.style.width = '25%';
+                            } else if (m.status === 'initializing tesseract') {
+                                progressText.textContent = 'Initializing Engine...';
+                                progressFill.style.width = '35%';
+                            } else if (m.status === 'loading language traineddata') {
+                                progressText.textContent = 'Loading Language Data...';
+                                const langProgress = 35 + Math.round(m.progress * 20);
+                                progressFill.style.width = langProgress + '%';
+                            } else if (m.status === 'initializing api') {
+                                progressText.textContent = 'Initializing API...';
+                                progressFill.style.width = '55%';
+                            }
+                        }
+                    });
+                    
+                    await worker.loadLanguage('eng');
+                    await worker.initialize('eng');
+                    
+                    // Set parameters based on selected mode
+                    await worker.setParameters({
+                        tessedit_pageseg_mode: selectedOcrMode,
+                        preserve_interword_spaces: '1',
+                    });
+                    
+                    progressText.textContent = 'Analyzing text...';
+                    
+                    const { data } = await worker.recognize(processedImage);
+                    currentText = data.text;
+                    
+                    if (currentText.trim()) {
+                        extractedText.textContent = currentText;
+                        extractedText.classList.remove('empty-state');
+                        copyBtn.disabled = false;
+                        downloadBtn.disabled = false;
+                        updateStats(data);
+                    } else {
+                        extractedText.innerHTML = '<div class="empty-state">No text detected. Try adjusting the settings.</div>';
+                    }
+                    
+                    await worker.terminate();
+                    progressContainer.classList.remove('show');
+                    
+                } catch (error) {
+                    console.error('OCR Error:', error);
+                    let errorMsg = 'Processing failed. ';
+                    
+                    if (error.message) {
+                        errorMsg += error.message;
+                    } else {
+                        errorMsg += 'Please check your internet connection and try again.';
+                    }
+                    
+                    extractedText.innerHTML = `<div class="empty-state" style="color: var(--secondary);">Error: ${errorMsg}</div>`;
+                    progressContainer.classList.remove('show');
+                }
+            }
+            
+            function updateStats(data) {
+                const text = data.text.trim();
+                const words = text.split(/\s+/).filter(w => w.length > 0);
+                const lines = text.split('\n').filter(l => l.trim().length > 0);
+                
+                document.getElementById('charCount').textContent = text.length.toLocaleString();
+                document.getElementById('wordCount').textContent = words.length.toLocaleString();
+                document.getElementById('lineCount').textContent = lines.length.toLocaleString();
+                document.getElementById('confidence').textContent = Math.round(data.confidence) + '%';
+                
+                stats.style.display = 'grid';
+                stats.style.animation = 'fadeIn 0.5s ease';
+            }
+            
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(currentText);
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                    }, 2000);
+                } catch (err) {
+                    console.error('Copy failed:', err);
+                }
+            });
+            
+            downloadBtn.addEventListener('click', () => {
+                const blob = new Blob([currentText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `extracted-text-${Date.now()}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+    </script>
+</body>
+</html>
