@@ -83,10 +83,29 @@
             border-radius: 4px;
             padding: 20px;
             margin-bottom: 30px;
+            position: relative;
+            max-width: 100%;
+            overflow: hidden;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                padding: 15px;
+            }
         }
         
         .control-group {
             margin-bottom: 15px;
+            background: rgba(10, 14, 39, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-group:hover {
+            border-color: rgba(0, 255, 65, 0.3);
+            background: rgba(10, 14, 39, 0.5);
         }
         
         .control-group:last-child {
@@ -94,12 +113,304 @@
         }
         
         label {
-            display: block;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             font-size: 0.85rem;
             color: var(--primary);
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            font-weight: 700;
+        }
+        
+        label::before {
+            content: '▸';
+            color: var(--secondary);
+            font-size: 1rem;
+        }
+        
+        .control-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border), transparent);
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .control-divider {
+                margin: 15px 0;
+            }
+        }
+        
+        /* Language Selection */
+        .language-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            max-width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            .language-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 6px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .language-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        .language-btn {
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            color: var(--text-dim);
+            padding: 10px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .language-btn::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: linear-gradient(90deg, var(--secondary), transparent);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .language-btn:hover {
+            border-color: var(--secondary);
+            color: var(--text);
+            transform: translateY(-2px);
+        }
+        
+        .language-btn:hover::before {
+            width: 100%;
+            opacity: 0.1;
+        }
+        
+        .language-btn.active {
+            border-color: var(--secondary);
+            color: var(--secondary);
+            background: rgba(255, 0, 110, 0.05);
+            box-shadow: 0 0 15px rgba(255, 0, 110, 0.2);
+        }
+        
+        .language-btn.active::before {
+            width: 4px;
+            opacity: 1;
+            background: var(--secondary);
+        }
+        
+        .language-flag {
+            font-size: 1.2rem;
+        }
+        
+        .language-name {
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        
+        .language-code {
+            font-size: 0.6rem;
+            opacity: 0.6;
+        }
+        
+        /* Filter Options */
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            max-width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            .filter-options {
+                gap: 8px;
+            }
+        }
+        
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 12px;
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .filter-checkbox {
+                padding: 6px 10px;
+                font-size: 0.75rem;
+                flex: 1 1 calc(50% - 4px);
+                min-width: 140px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .filter-checkbox {
+                flex: 1 1 100%;
+            }
+        }
+        
+        .filter-checkbox:hover {
+            border-color: var(--primary);
+        }
+        
+        .filter-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+        
+        .filter-checkbox.checked {
+            border-color: var(--primary);
+            background: rgba(0, 255, 65, 0.05);
+        }
+        
+        /* Crop Canvas */
+        #cropCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 39, 0.98);
+            z-index: 3000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        #cropCanvas.show {
+            display: flex;
+        }
+        
+        .crop-container {
+            max-width: 90vw;
+            max-height: 90vh;
+            position: relative;
+            border: 2px solid var(--primary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .crop-image-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: crosshair;
+        }
+        
+        #cropImage {
+            max-width: 100%;
+            max-height: 80vh;
+            display: block;
+            user-select: none;
+        }
+        
+        .crop-overlay {
+            position: absolute;
+            border: 3px dashed var(--primary);
+            background: rgba(0, 255, 65, 0.15);
+            pointer-events: none;
+            display: none;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+        }
+        
+        .crop-overlay.show {
+            display: block;
+        }
+        
+        .crop-overlay::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .crop-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .crop-btn {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+        
+        .crop-btn:hover {
+            background: var(--primary);
+            color: var(--bg-dark);
+        }
+        
+        .crop-btn.cancel {
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+        
+        .crop-btn.cancel:hover {
+            background: var(--secondary);
+            color: var(--bg-dark);
+        }
+        
+        .crop-instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            padding: 15px 25px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--text);
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 255, 65, 0.3);
+        }
+        
+        .crop-instructions strong {
+            color: var(--primary);
         }
         
         select, input[type="range"] {
@@ -116,13 +427,21 @@
         /* OCR Mode Toggle Buttons */
         .ocr-mode-grid {
             display: grid;
-            grid-template-columns: repeat(9, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
+            max-width: 100%;
         }
         
         @media (max-width: 768px) {
             .ocr-mode-grid {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .ocr-mode-grid {
+                gap: 6px;
             }
         }
         
@@ -141,6 +460,12 @@
             overflow: hidden;
         }
         
+        @media (max-width: 768px) {
+            .ocr-mode-btn {
+                padding: 10px 12px;
+            }
+        }
+        
         .ocr-mode-btn::before {
             content: '';
             position: absolute;
@@ -156,6 +481,7 @@
         .ocr-mode-btn:hover {
             border-color: var(--primary);
             color: var(--text);
+            transform: translateX(2px);
         }
         
         .ocr-mode-btn:hover::before {
@@ -167,6 +493,7 @@
             border-color: var(--primary);
             color: var(--primary);
             background: rgba(0, 255, 65, 0.05);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
         }
         
         .ocr-mode-btn.active::before {
@@ -179,12 +506,24 @@
             font-weight: 700;
             display: block;
             margin-bottom: 2px;
+            font-size: 0.85rem;
         }
         
         .ocr-mode-desc {
             font-size: 0.7rem;
             color: var(--text-dim);
             display: block;
+            line-height: 1.3;
+        }
+        
+        @media (max-width: 768px) {
+            .ocr-mode-title {
+                font-size: 0.8rem;
+            }
+            
+            .ocr-mode-desc {
+                font-size: 0.65rem;
+            }
         }
         
         .ocr-mode-btn.active .ocr-mode-desc {
@@ -242,7 +581,15 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            max-width: 1400px;
+            margin: 0 auto;
             margin-bottom: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            .upload-zone {
+                padding: 40px 20px;
+            }
         }
         
         .upload-zone::before {
@@ -305,11 +652,14 @@
             grid-template-columns: 1fr 1fr;
             gap: 30px;
             margin-bottom: 40px;
+            max-width: 100%;
+            overflow: hidden;
         }
         
         @media (max-width: 900px) {
             .content-grid {
                 grid-template-columns: 1fr;
+                gap: 20px;
             }
         }
         
@@ -320,6 +670,14 @@
             padding: 30px;
             position: relative;
             transition: all 0.3s ease;
+            max-width: 100%;
+            min-width: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .panel {
+                padding: 20px;
+            }
         }
         
         .panel::before {
@@ -359,14 +717,29 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            max-width: 100%;
         }
         
         #image-preview {
             max-width: 100%;
             max-height: 500px;
+            width: auto;
+            height: auto;
             border-radius: 4px;
             box-shadow: 0 8px 32px rgba(0, 255, 65, 0.2);
             display: none;
+            object-fit: contain;
+        }
+        
+        @media (max-width: 768px) {
+            #preview-container {
+                min-height: 200px;
+            }
+            
+            #image-preview {
+                max-height: 300px;
+            }
         }
         
         #image-preview.show {
@@ -392,10 +765,22 @@
             min-height: 300px;
             max-height: 500px;
             overflow-y: auto;
+            overflow-x: hidden;
             font-size: 0.9rem;
             line-height: 1.6;
             white-space: pre-wrap;
             word-wrap: break-word;
+            word-break: break-word;
+            max-width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            #extracted-text {
+                padding: 15px;
+                min-height: 200px;
+                max-height: 400px;
+                font-size: 0.85rem;
+            }
         }
         
         #extracted-text::-webkit-scrollbar {
@@ -536,6 +921,22 @@
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 20px;
             margin-top: 30px;
+            max-width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                margin-top: 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stats {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
         }
         
         .stat-card {
@@ -823,69 +1224,203 @@
         
         <div class="controls">
             <div class="control-group">
+                <label>Language</label>
+                <div class="language-grid">
+                    <button class="language-btn active" data-lang="eng">
+                        <span class="language-flag">🇬🇧</span>
+                        <span class="language-name">English</span>
+                        <span class="language-code">ENG</span>
+                    </button>
+                    <button class="language-btn" data-lang="hin">
+                        <span class="language-flag">🇮🇳</span>
+                        <span class="language-name">हिन्दी</span>
+                        <span class="language-code">HIN</span>
+                    </button>
+                    <button class="language-btn" data-lang="mal">
+                        <span class="language-flag">🇮🇳</span>
+                        <span class="language-name">മലയാളം</span>
+                        <span class="language-code">MAL</span>
+                    </button>
+                    <button class="language-btn" data-lang="tam">
+                        <span class="language-flag">🇮🇳</span>
+                        <span class="language-name">தமிழ்</span>
+                        <span class="language-code">TAM</span>
+                    </button>
+                    <button class="language-btn" data-lang="tel">
+                        <span class="language-flag">🇮🇳</span>
+                        <span class="language-name">తెలుగు</span>
+                        <span class="language-code">TEL</span>
+                    </button>
+                    <button class="language-btn" data-lang="kan">
+                        <span class="language-flag">🇮🇳</span>
+                        <span class="language-name">ಕನ್ನಡ</span>
+                        <span class="language-code">KAN</span>
+                    </button>
+                    <button class="language-btn" data-lang="ben">
+                        <span class="language-flag">🇮🇳</span>
+                        <span class="language-name">বাংলা</span>
+                        <span class="language-code">BEN</span>
+                    </button>
+                    <button class="language-btn" data-lang="mar">
+                        <span class="language-flag">🇮🇳</span>
+                        <span class="language-name">मराठी</span>
+                        <span class="language-code">MAR</span>
+                    </button>
+                    <button class="language-btn" data-lang="guj">
+                        <span class="language-flag">🇮🇳</span>
+                        <span class="language-name">ગુજરાતી</span>
+                        <span class="language-code">GUJ</span>
+                    </button>
+                    <button class="language-btn" data-lang="pan">
+                        <span class="language-flag">🇮🇳</span>
+                        <span class="language-name">ਪੰਜਾਬੀ</span>
+                        <span class="language-code">PAN</span>
+                    </button>
+                    <button class="language-btn" data-lang="spa">
+                        <span class="language-flag">🇪🇸</span>
+                        <span class="language-name">Español</span>
+                        <span class="language-code">SPA</span>
+                    </button>
+                    <button class="language-btn" data-lang="fra">
+                        <span class="language-flag">🇫🇷</span>
+                        <span class="language-name">Français</span>
+                        <span class="language-code">FRA</span>
+                    </button>
+                    <button class="language-btn" data-lang="deu">
+                        <span class="language-flag">🇩🇪</span>
+                        <span class="language-name">Deutsch</span>
+                        <span class="language-code">DEU</span>
+                    </button>
+                    <button class="language-btn" data-lang="ara">
+                        <span class="language-flag">🇸🇦</span>
+                        <span class="language-name">العربية</span>
+                        <span class="language-code">ARA</span>
+                    </button>
+                    <button class="language-btn" data-lang="jpn">
+                        <span class="language-flag">🇯🇵</span>
+                        <span class="language-name">日本語</span>
+                        <span class="language-code">JPN</span>
+                    </button>
+                    <button class="language-btn" data-lang="kor">
+                        <span class="language-flag">🇰🇷</span>
+                        <span class="language-name">한국어</span>
+                        <span class="language-code">KOR</span>
+                    </button>
+                    <button class="language-btn" data-lang="chi_sim">
+                        <span class="language-flag">🇨🇳</span>
+                        <span class="language-name">简体中文</span>
+                        <span class="language-code">CHI</span>
+                    </button>
+                    <button class="language-btn" data-lang="rus">
+                        <span class="language-flag">🇷🇺</span>
+                        <span class="language-name">Русский</span>
+                        <span class="language-code">RUS</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="control-divider"></div>
+            
+            <div class="control-group">
                 <label>OCR Mode</label>
-                <div class="ocr-mode-grid">
-                    <button class="ocr-mode-btn" data-mode="0">
-                        <span class="ocr-mode-title">OSD</span>
-                        <span class="ocr-mode-desc">Orientation & Script Detection</span>
-                    </button>
-                    <button class="ocr-mode-btn" data-mode="1">
-                        <span class="ocr-mode-title">Auto + OSD</span>
-                        <span class="ocr-mode-desc">Auto Segmentation with OSD</span>
-                    </button>
-                    <button class="ocr-mode-btn active" data-mode="3">
-                        <span class="ocr-mode-title">Automatic</span>
-                        <span class="ocr-mode-desc">Fully Automatic (Default)</span>
-                    </button>
-                    <button class="ocr-mode-btn" data-mode="4">
-                        <span class="ocr-mode-title">Single Column</span>
-                        <span class="ocr-mode-desc">Variable Text Sizes</span>
-                    </button>
-                    <button class="ocr-mode-btn" data-mode="6">
-                        <span class="ocr-mode-title">Uniform Block</span>
-                        <span class="ocr-mode-desc">Single Block of Text</span>
-                    </button>
-                    <button class="ocr-mode-btn" data-mode="7">
-                        <span class="ocr-mode-title">Single Line</span>
-                        <span class="ocr-mode-desc">One Line of Text</span>
-                    </button>
-                    <button class="ocr-mode-btn" data-mode="8">
-                        <span class="ocr-mode-title">Single Word</span>
-                        <span class="ocr-mode-desc">One Word Only</span>
-                    </button>
-                    <button class="ocr-mode-btn" data-mode="11">
-                        <span class="ocr-mode-title">Sparse Text</span>
-                        <span class="ocr-mode-desc">Scattered Text Elements</span>
-                    </button>
-                    <button class="ocr-mode-btn" data-mode="13">
-                        <span class="ocr-mode-title">Raw Line</span>
-                        <span class="ocr-mode-desc">No Layout Analysis</span>
+                    <div class="ocr-mode-grid">
+                        <button class="ocr-mode-btn" data-mode="0">
+                            <span class="ocr-mode-title">OSD</span>
+                            <span class="ocr-mode-desc">Orientation & Script Detection</span>
+                        </button>
+                        <button class="ocr-mode-btn" data-mode="1">
+                            <span class="ocr-mode-title">Auto + OSD</span>
+                            <span class="ocr-mode-desc">Auto Segmentation with OSD</span>
+                        </button>
+                        <button class="ocr-mode-btn active" data-mode="3">
+                            <span class="ocr-mode-title">Automatic</span>
+                            <span class="ocr-mode-desc">Fully Automatic (Default)</span>
+                        </button>
+                        <button class="ocr-mode-btn" data-mode="4">
+                            <span class="ocr-mode-title">Single Column</span>
+                            <span class="ocr-mode-desc">Variable Text Sizes</span>
+                        </button>
+                        <button class="ocr-mode-btn" data-mode="6">
+                            <span class="ocr-mode-title">Uniform Block</span>
+                            <span class="ocr-mode-desc">Single Block of Text</span>
+                        </button>
+                        <button class="ocr-mode-btn" data-mode="7">
+                            <span class="ocr-mode-title">Single Line</span>
+                            <span class="ocr-mode-desc">One Line of Text</span>
+                        </button>
+                        <button class="ocr-mode-btn" data-mode="8">
+                            <span class="ocr-mode-title">Single Word</span>
+                            <span class="ocr-mode-desc">One Word Only</span>
+                        </button>
+                        <button class="ocr-mode-btn" data-mode="11">
+                            <span class="ocr-mode-title">Sparse Text</span>
+                            <span class="ocr-mode-desc">Scattered Text Elements</span>
+                        </button>
+                        <button class="ocr-mode-btn" data-mode="13">
+                            <span class="ocr-mode-title">Raw Line</span>
+                            <span class="ocr-mode-desc">No Layout Analysis</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-divider"></div>
+                
+                <div class="control-group">
+                    <label>Text Filters</label>
+                    <div class="filter-options">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="filterEmojis" checked>
+                            <span>Remove Emojis</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="filterSpecialChars" checked>
+                            <span>Remove Special Symbols</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="filterExtraSpaces" checked>
+                            <span>Clean Extra Spaces</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="filterNumbers">
+                            <span>Remove Numbers</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="control-divider"></div>
+                
+                <div class="control-group">
+                    <label>Image Preprocessing</label>
+                    <button id="cropImageBtn" class="privacy-btn" style="width: 100%; margin-bottom: 0;" disabled>
+                        📐 Crop Image Region
                     </button>
                 </div>
-            </div>
+                
+                <div class="control-divider"></div>
             
-            <div class="control-group">
-                <label>Image Enhancement</label>
-                <div class="slider-container">
-                    <span style="color: var(--text-dim); font-size: 0.85rem; min-width: 80px;">Contrast:</span>
-                    <input type="range" id="contrast" min="50" max="200" value="100" step="10">
-                    <span class="slider-value" id="contrastValue">100%</span>
+                <div class="control-group">
+                    <label>Image Enhancement</label>
+                    <div class="slider-container">
+                        <span style="color: var(--text-dim); font-size: 0.85rem; min-width: 80px;">Contrast:</span>
+                        <input type="range" id="contrast" min="50" max="200" value="100" step="10">
+                        <span class="slider-value" id="contrastValue">100%</span>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="control-group">
-                <div class="slider-container">
-                    <span style="color: var(--text-dim); font-size: 0.85rem; min-width: 80px;">Brightness:</span>
-                    <input type="range" id="brightness" min="50" max="200" value="100" step="10">
-                    <span class="slider-value" id="brightnessValue">100%</span>
+                
+                <div class="control-group">
+                    <div class="slider-container">
+                        <span style="color: var(--text-dim); font-size: 0.85rem; min-width: 80px;">Brightness:</span>
+                        <input type="range" id="brightness" min="50" max="200" value="100" step="10">
+                        <span class="slider-value" id="brightnessValue">100%</span>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="control-group">
-                <div class="slider-container">
-                    <span style="color: var(--text-dim); font-size: 0.85rem; min-width: 80px;">Sharpness:</span>
-                    <input type="range" id="sharpness" min="0" max="200" value="100" step="10">
-                    <span class="slider-value" id="sharpnessValue">100%</span>
+                
+                <div class="control-group">
+                    <div class="slider-container">
+                        <span style="color: var(--text-dim); font-size: 0.85rem; min-width: 80px;">Sharpness:</span>
+                        <input type="range" id="sharpness" min="0" max="200" value="100" step="10">
+                        <span class="slider-value" id="sharpnessValue">100%</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1041,6 +1576,23 @@
 
     <canvas id="canvas"></canvas>
 
+    <!-- Crop Canvas -->
+    <div id="cropCanvas">
+        <div class="crop-container">
+            <div class="crop-image-wrapper" id="cropImageWrapper">
+                <img id="cropImage" alt="Crop">
+                <div class="crop-overlay" id="cropOverlay"></div>
+            </div>
+            <div class="crop-controls">
+                <button class="crop-btn" id="applyCropBtn">Apply Crop</button>
+                <button class="crop-btn cancel" id="cancelCropBtn">Cancel</button>
+            </div>
+            <div class="crop-instructions">
+                <strong>Click and drag</strong> to select the text region · <strong>ESC</strong> to cancel
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
     <script>
         window.addEventListener('load', function() {
@@ -1084,6 +1636,30 @@
             let currentText = '';
             let currentImageData = null;
             let selectedOcrMode = '3'; // Default mode
+            let selectedLanguage = 'eng'; // Default language
+            
+            // Filter checkboxes
+            const filterCheckboxes = document.querySelectorAll('.filter-checkbox input[type="checkbox"]');
+            filterCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    this.closest('.filter-checkbox').classList.toggle('checked', this.checked);
+                });
+                // Set initial state
+                if (checkbox.checked) {
+                    checkbox.closest('.filter-checkbox').classList.add('checked');
+                }
+            });
+            
+            // Language selection buttons
+            const languageButtons = document.querySelectorAll('.language-btn');
+            languageButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    languageButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedLanguage = btn.dataset.lang;
+                    if (currentImageData) processImage(currentImageData);
+                });
+            });
             
             // Privacy notice handling
             const hasAcknowledged = localStorage.getItem('privacyAcknowledged');
@@ -1152,6 +1728,164 @@
                 if (currentImageData) processImage(currentImageData);
             });
             
+            // Crop functionality
+            const cropImageBtn = document.getElementById('cropImageBtn');
+            const cropCanvas = document.getElementById('cropCanvas');
+            const cropImage = document.getElementById('cropImage');
+            const cropImageWrapper = document.getElementById('cropImageWrapper');
+            const cropOverlay = document.getElementById('cropOverlay');
+            const applyCropBtn = document.getElementById('applyCropBtn');
+            const cancelCropBtn = document.getElementById('cancelCropBtn');
+            
+            let cropData = { startX: 0, startY: 0, endX: 0, endY: 0, isDragging: false };
+            let originalImageForCrop = null;
+            
+            cropImageBtn.addEventListener('click', () => {
+                if (currentImageData) {
+                    cropImage.src = currentImageData;
+                    originalImageForCrop = currentImageData;
+                    cropCanvas.classList.add('show');
+                    cropOverlay.classList.remove('show');
+                    cropData = { startX: 0, startY: 0, endX: 0, endY: 0, isDragging: false };
+                }
+            });
+            
+            cropImageWrapper.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const rect = cropImage.getBoundingClientRect();
+                cropData.startX = e.clientX - rect.left;
+                cropData.startY = e.clientY - rect.top;
+                cropData.isDragging = true;
+                cropOverlay.style.left = cropData.startX + 'px';
+                cropOverlay.style.top = cropData.startY + 'px';
+                cropOverlay.style.width = '0px';
+                cropOverlay.style.height = '0px';
+                cropOverlay.classList.add('show');
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!cropData.isDragging) return;
+                
+                const rect = cropImage.getBoundingClientRect();
+                cropData.endX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+                cropData.endY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+                
+                const width = Math.abs(cropData.endX - cropData.startX);
+                const height = Math.abs(cropData.endY - cropData.startY);
+                const left = Math.min(cropData.startX, cropData.endX);
+                const top = Math.min(cropData.startY, cropData.endY);
+                
+                cropOverlay.style.left = left + 'px';
+                cropOverlay.style.top = top + 'px';
+                cropOverlay.style.width = width + 'px';
+                cropOverlay.style.height = height + 'px';
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (cropData.isDragging) {
+                    cropData.isDragging = false;
+                }
+            });
+            
+            // Touch support for mobile
+            cropImageWrapper.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = cropImage.getBoundingClientRect();
+                cropData.startX = touch.clientX - rect.left;
+                cropData.startY = touch.clientY - rect.top;
+                cropData.isDragging = true;
+                cropOverlay.style.left = cropData.startX + 'px';
+                cropOverlay.style.top = cropData.startY + 'px';
+                cropOverlay.style.width = '0px';
+                cropOverlay.style.height = '0px';
+                cropOverlay.classList.add('show');
+            });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!cropData.isDragging) return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                const rect = cropImage.getBoundingClientRect();
+                cropData.endX = Math.max(0, Math.min(touch.clientX - rect.left, rect.width));
+                cropData.endY = Math.max(0, Math.min(touch.clientY - rect.top, rect.height));
+                
+                const width = Math.abs(cropData.endX - cropData.startX);
+                const height = Math.abs(cropData.endY - cropData.startY);
+                const left = Math.min(cropData.startX, cropData.endX);
+                const top = Math.min(cropData.startY, cropData.endY);
+                
+                cropOverlay.style.left = left + 'px';
+                cropOverlay.style.top = top + 'px';
+                cropOverlay.style.width = width + 'px';
+                cropOverlay.style.height = height + 'px';
+            });
+            
+            document.addEventListener('touchend', () => {
+                if (cropData.isDragging) {
+                    cropData.isDragging = false;
+                }
+            });
+            
+            applyCropBtn.addEventListener('click', () => {
+                const width = Math.abs(cropData.endX - cropData.startX);
+                const height = Math.abs(cropData.endY - cropData.startY);
+                
+                // Check if a valid selection was made
+                if (width < 10 || height < 10) {
+                    alert('Please select a larger area to crop');
+                    return;
+                }
+                
+                const imgRect = cropImage.getBoundingClientRect();
+                const scaleX = cropImage.naturalWidth / imgRect.width;
+                const scaleY = cropImage.naturalHeight / imgRect.height;
+                
+                const x = Math.min(cropData.startX, cropData.endX) * scaleX;
+                const y = Math.min(cropData.startY, cropData.endY) * scaleY;
+                const cropWidth = width * scaleX;
+                const cropHeight = height * scaleY;
+                
+                // Create cropped image
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = cropWidth;
+                tempCanvas.height = cropHeight;
+                
+                const img = new Image();
+                img.onload = () => {
+                    tempCtx.drawImage(img, x, y, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+                    currentImageData = tempCanvas.toDataURL();
+                    imagePreview.src = currentImageData;
+                    cropCanvas.classList.remove('show');
+                    cropOverlay.classList.remove('show');
+                    
+                    // Automatically process the cropped image
+                    processImage(currentImageData);
+                };
+                img.onerror = () => {
+                    alert('Error cropping image. Please try again.');
+                    cropCanvas.classList.remove('show');
+                };
+                img.src = originalImageForCrop;
+            });
+            
+            cancelCropBtn.addEventListener('click', () => {
+                cropCanvas.classList.remove('show');
+                cropOverlay.classList.remove('show');
+                cropData = { startX: 0, startY: 0, endX: 0, endY: 0, isDragging: false };
+            });
+            
+            // ESC key to cancel crop
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && cropCanvas.classList.contains('show')) {
+                    cropCanvas.classList.remove('show');
+                    cropOverlay.classList.remove('show');
+                    cropData = { startX: 0, startY: 0, endX: 0, endY: 0, isDragging: false };
+                }
+            });
+            
             // Upload zone interactions
             uploadZone.addEventListener('click', () => fileInput.click());
             
@@ -1187,9 +1921,38 @@
                     imagePreview.src = currentImageData;
                     imagePreview.classList.add('show');
                     document.querySelector('#preview-container .placeholder').style.display = 'none';
+                    cropImageBtn.disabled = false;
                     processImage(currentImageData);
                 };
                 reader.readAsDataURL(file);
+            }
+            
+            function filterText(text) {
+                let filtered = text;
+                
+                // Remove emojis
+                if (document.getElementById('filterEmojis').checked) {
+                    filtered = filtered.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2300}-\u{23FF}]|[\u{2B50}-\u{2B55}]|[\u{FE00}-\u{FE0F}]|[\u{1F200}-\u{1F2FF}]/gu, '');
+                }
+                
+                // Remove special characters (keep basic punctuation)
+                if (document.getElementById('filterSpecialChars').checked) {
+                    filtered = filtered.replace(/[^\p{L}\p{N}\s.,!?@#$%&*()[\]{};:'"\/\-_+=<>\n]/gu, '');
+                }
+                
+                // Clean extra spaces
+                if (document.getElementById('filterExtraSpaces').checked) {
+                    filtered = filtered.replace(/[ \t]+/g, ' '); // Multiple spaces to single
+                    filtered = filtered.replace(/\n{3,}/g, '\n\n'); // Multiple newlines to max 2
+                    filtered = filtered.trim();
+                }
+                
+                // Remove numbers
+                if (document.getElementById('filterNumbers').checked) {
+                    filtered = filtered.replace(/\d+/g, '');
+                }
+                
+                return filtered;
             }
             
             function preprocessImage(imageData) {
@@ -1280,7 +2043,7 @@
                                 progressText.textContent = 'Initializing Engine...';
                                 progressFill.style.width = '35%';
                             } else if (m.status === 'loading language traineddata') {
-                                progressText.textContent = 'Loading Language Data...';
+                                progressText.textContent = `Loading ${selectedLanguage.toUpperCase()} Language Data...`;
                                 const langProgress = 35 + Math.round(m.progress * 20);
                                 progressFill.style.width = langProgress + '%';
                             } else if (m.status === 'initializing api') {
@@ -1290,8 +2053,8 @@
                         }
                     });
                     
-                    await worker.loadLanguage('eng');
-                    await worker.initialize('eng');
+                    await worker.loadLanguage(selectedLanguage);
+                    await worker.initialize(selectedLanguage);
                     
                     // Set parameters based on selected mode
                     await worker.setParameters({
@@ -1302,7 +2065,7 @@
                     progressText.textContent = 'Analyzing text...';
                     
                     const { data } = await worker.recognize(processedImage);
-                    currentText = data.text;
+                    currentText = filterText(data.text); // Apply filters
                     
                     if (currentText.trim()) {
                         extractedText.textContent = currentText;
