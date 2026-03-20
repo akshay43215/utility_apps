@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeerLink — WebRTC Real-Time Communication</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────
+   DESIGN SYSTEM — INDUSTRIAL OSCILLOSCOPE
+───────────────────────────────────────────── */
+:root {
+  --bg:         #060810;
+  --bg2:        #0a0d18;
+  --panel:      #0d1120;
+  --panel2:     #111827;
+  --border:     rgba(0,255,180,0.12);
+  --border2:    rgba(0,255,180,0.25);
+  --neon:       #00ffb4;
+  --neon2:      #00c8ff;
+  --neon3:      #ff3e6c;
+  --neon4:      #ffb800;
+  --text:       #d4f0e8;
+  --text2:      #6a9b8a;
+  --text3:      #334450;
+  --glow:       rgba(0,255,180,0.25);
+  --glow2:      rgba(0,200,255,0.2);
+  --glow3:      rgba(255,62,108,0.25);
+  --scanline-h: 3px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html { font-size: 14px; }
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Scanline overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent calc(var(--scanline-h) - 1px),
+    rgba(0,0,0,0.08) calc(var(--scanline-h) - 1px),
+    rgba(0,0,0,0.08) var(--scanline-h)
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Ambient glow blobs */
+.ambience {
+  position: fixed; pointer-events: none; z-index: 0;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.15;
+}
+.ambience-1 { width:600px; height:400px; top:-100px; left:-150px; background: var(--neon); }
+.ambience-2 { width:400px; height:400px; bottom:-100px; right:-100px; background: var(--neon2); }
+.ambience-3 { width:300px; height:300px; top:50%; left:50%; transform:translate(-50%,-50%); background: var(--neon3); opacity:0.07; }
+
+/* ─── LAYOUT ─── */
+.app {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+
+/* ─── HEADER ─── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(6,8,16,0.85);
+  backdrop-filter: blur(16px);
+  position: sticky; top: 0; z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-mark {
+  width: 36px; height: 36px;
+  border: 1.5px solid var(--neon);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  box-shadow: 0 0 12px var(--glow), inset 0 0 12px rgba(0,255,180,0.05);
+}
+.logo-mark::before {
+  content: '';
+  width: 14px; height: 2px;
+  background: var(--neon);
+  box-shadow: 0 0 8px var(--neon);
+  animation: pulse-bar 2s ease-in-out infinite;
+}
+@keyframes pulse-bar {
+  0%,100% { width:14px; opacity:1; }
+  50% { width:8px; opacity:0.4; }
+}
+.logo-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--neon);
+  text-shadow: 0 0 20px var(--glow);
+}
+.logo-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text2);
+  letter-spacing: 0.2em;
+  margin-top: 2px;
+}
+
+.status-strip {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text2);
+}
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--text3);
+  box-shadow: none;
+  transition: all 0.4s;
+}
+.status-dot.active {
+  background: var(--neon);
+  box-shadow: 0 0 10px var(--neon);
+  animation: blink 2s infinite;
+}
+.status-dot.warn { background: var(--neon4); box-shadow: 0 0 10px var(--neon4); }
+.status-dot.error { background: var(--neon3); box-shadow: 0 0 10px var(--neon3); }
+@keyframes blink {
+  0%,100% { opacity:1; } 50% { opacity:0.3; }
+}
+
+/* ─── MAIN GRID ─── */
+main {
+  display: grid;
+  grid-template-columns: 300px 1fr 280px;
+  grid-template-rows: 1fr;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* ─── PANEL BASE ─── */
+.panel {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel:last-child { border-right: none; border-left: 1px solid var(--border); }
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,255,180,0.03);
+  flex-shrink: 0;
+}
+.panel-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--neon);
+  text-transform: uppercase;
+}
+.panel-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text2);
+  background: rgba(0,255,180,0.06);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+/* ─── LEFT PANEL: Connection Setup ─── */
+.setup-section {
+  padding: 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.section-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text2);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text2);
+  letter-spacing: 0.1em;
+}
+
+.inp {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 9px 12px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  resize: none;
+}
+.inp:focus {
+  border-color: var(--neon);
+  box-shadow: 0 0 0 2px rgba(0,255,180,0.1);
+}
+.inp::placeholder { color: var(--text3); }
+textarea.inp { height: 90px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 4px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.btn-full { width: 100%; }
+.btn-neon {
+  background: rgba(0,255,180,0.08);
+  border-color: var(--neon);
+  color: var(--neon);
+  box-shadow: 0 0 12px rgba(0,255,180,0.1);
+}
+.btn-neon:hover {
+  background: rgba(0,255,180,0.15);
+  box-shadow: 0 0 20px rgba(0,255,180,0.25);
+  transform: translateY(-1px);
+}
+.btn-neon:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+
+.btn-cyan {
+  background: rgba(0,200,255,0.08);
+  border-color: var(--neon2);
+  color: var(--neon2);
+  box-shadow: 0 0 12px rgba(0,200,255,0.1);
+}
+.btn-cyan:hover { background: rgba(0,200,255,0.15); box-shadow: 0 0 20px rgba(0,200,255,0.25); transform: translateY(-1px); }
+.btn-cyan:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+
+.btn-red {
+  background: rgba(255,62,108,0.08);
+  border-color: var(--neon3);
+  color: var(--neon3);
+}
+.btn-red:hover { background: rgba(255,62,108,0.15); box-shadow: 0 0 20px rgba(255,62,108,0.25); }
+.btn-red:disabled { opacity:0.3; cursor:not-allowed; }
+
+.btn-amber {
+  background: rgba(255,184,0,0.08);
+  border-color: var(--neon4);
+  color: var(--neon4);
+}
+.btn-amber:hover { background: rgba(255,184,0,0.15); box-shadow: 0 0 20px rgba(255,184,0,0.25); }
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border2);
+  color: var(--text2);
+}
+.btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+.btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+.btn-xs { padding: 4px 8px; font-size: 0.7rem; }
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Toggle switch */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+.toggle-label {
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 500;
+}
+.toggle {
+  position: relative;
+  width: 36px; height: 20px;
+  cursor: pointer;
+}
+.toggle input { display: none; }
+.toggle-track {
+  position: absolute; inset: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  transition: all 0.25s;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--text3);
+  transition: all 0.25s;
+}
+.toggle input:checked ~ .toggle-track {
+  border-color: var(--neon);
+  background: rgba(0,255,180,0.1);
+  box-shadow: 0 0 8px var(--glow);
+}
+.toggle input:checked ~ .toggle-thumb {
+  transform: translateX(16px);
+  background: var(--neon);
+  box-shadow: 0 0 8px var(--neon);
+}
+
+/* Stats row */
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat-cell {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.stat-value {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1rem;
+  color: var(--neon);
+  text-shadow: 0 0 10px var(--glow);
+  font-weight: 400;
+}
+.stat-unit {
+  font-size: 0.65rem;
+  color: var(--text2);
+  margin-left: 2px;
+}
+.stat-name {
+  font-size: 0.68rem;
+  color: var(--text3);
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ─── CENTER: Video + Visualizer ─── */
+.center-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Video area */
+.video-arena {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  background: var(--bg);
+  flex-shrink: 0;
+  height: 56vh;
+  min-height: 300px;
+}
+
+.video-cell {
+  position: relative;
+  background: var(--panel);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.video-cell video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.video-cell.local video { transform: scaleX(-1); }
+
+/* Corner brackets */
+.video-cell::before, .video-cell::after {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  z-index: 5;
+  pointer-events: none;
+}
+.video-cell::before {
+  top: 8px; left: 8px;
+  border-top: 1.5px solid var(--neon);
+  border-left: 1.5px solid var(--neon);
+  box-shadow: -2px -2px 8px rgba(0,255,180,0.3);
+}
+.video-cell::after {
+  bottom: 8px; right: 8px;
+  border-bottom: 1.5px solid var(--neon);
+  border-right: 1.5px solid var(--neon);
+  box-shadow: 2px 2px 8px rgba(0,255,180,0.3);
+}
+
+.video-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 10px 14px;
+  background: linear-gradient(transparent, rgba(6,8,16,0.85));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  z-index: 4;
+}
+.video-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--neon);
+  text-shadow: 0 0 8px var(--glow);
+  letter-spacing: 0.1em;
+}
+.video-meta {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--text2);
+}
+
+/* No-stream placeholder */
+.no-stream {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text3);
+}
+.no-stream-icon {
+  width: 48px; height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+}
+.no-stream p {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+}
+
+/* Speaking ring */
+.speaking-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  z-index: 3;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  pointer-events: none;
+}
+.speaking-ring.active {
+  border-color: var(--neon2);
+  box-shadow: inset 0 0 20px rgba(0,200,255,0.15);
+}
+
+/* ─── Visualizer & Tabs ─── */
+.viz-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+}
+
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+.tab {
+  padding: 10px 18px;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  user-select: none;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text2); }
+.tab.active {
+  color: var(--neon);
+  border-bottom-color: var(--neon);
+  text-shadow: 0 0 10px var(--glow);
+  background: rgba(0,255,180,0.04);
+}
+
+.tab-content {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.tab-content.active { display: flex; flex-direction: column; }
+
+/* Oscilloscope canvas */
+.canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+#oscCanvas, #freqCanvas {
+  width: 100%; height: 100%;
+  display: block;
+}
+
+/* Data channel panel */
+.data-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.data-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  line-height: 1.8;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.log-entry {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  animation: slideIn 0.2s ease;
+}
+@keyframes slideIn {
+  from { opacity:0; transform: translateX(-6px); }
+  to { opacity:1; transform: translateX(0); }
+}
+.log-time { color: var(--text3); flex-shrink: 0; }
+.log-dir { width: 20px; flex-shrink: 0; text-align: center; }
+.log-dir.send { color: var(--neon); }
+.log-dir.recv { color: var(--neon2); }
+.log-dir.sys { color: var(--neon4); }
+.log-dir.err { color: var(--neon3); }
+.log-text { color: var(--text); word-break: break-all; }
+
+.data-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.2);
+  flex-shrink: 0;
+}
+
+/* File drop zone */
+.drop-zone {
+  margin: 16px;
+  border: 1px dashed var(--border2);
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--neon);
+  background: rgba(0,255,180,0.04);
+  color: var(--neon);
+}
+.drop-zone input[type=file] {
+  position: absolute; inset:0; opacity:0; cursor:pointer;
+}
+.drop-icon { font-size: 1.5rem; margin-bottom: 8px; }
+
+/* Transfer progress */
+.transfer-progress {
+  margin: 0 16px 12px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+}
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--text2);
+}
+.progress-bar-track {
+  height: 4px;
+  background: var(--bg2);
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon2), var(--neon));
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--glow2);
+  width: 0%;
+  transition: width 0.1s;
+}
+
+/* ─── RIGHT PANEL ─── */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ICE / SDP inspector */
+.sdp-display {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text2);
+  line-height: 1.7;
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+/* ICE candidate list */
+.ice-list {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: 200px;
+}
+.ice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  animation: slideIn 0.25s ease;
+}
+.ice-type {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+.ice-type.host { background: rgba(0,255,180,0.12); color: var(--neon); border: 1px solid rgba(0,255,180,0.3); }
+.ice-type.srflx { background: rgba(0,200,255,0.12); color: var(--neon2); border: 1px solid rgba(0,200,255,0.3); }
+.ice-type.relay { background: rgba(255,184,0,0.12); color: var(--neon4); border: 1px solid rgba(255,184,0,0.3); }
+.ice-addr { color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Connection state diagram */
+.state-diagram {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.state-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text3);
+  transition: color 0.4s;
+  position: relative;
+  padding-left: 8px;
+}
+.state-step.done { color: var(--neon); }
+.state-step.active { color: var(--neon4); }
+.state-step.error { color: var(--neon3); }
+.state-indicator {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text3);
+  flex-shrink: 0;
+  transition: all 0.4s;
+}
+.state-step.done .state-indicator { background: var(--neon); box-shadow: 0 0 8px var(--neon); }
+.state-step.active .state-indicator { background: var(--neon4); box-shadow: 0 0 8px var(--neon4); animation: blink 1s infinite; }
+.state-step.error .state-indicator { background: var(--neon3); box-shadow: 0 0 8px var(--neon3); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neon); }
+
+/* ─── FOOTER ─── */
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 28px;
+  border-top: 1px solid var(--border);
+  background: rgba(6,8,16,0.9);
+  backdrop-filter: blur(10px);
+  flex-shrink: 0;
+}
+
+.footer-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ctrl-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 4px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--text2);
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.ctrl-btn:hover { color: var(--text); border-color: var(--border2); }
+.ctrl-btn.on { border-color: var(--neon3); color: var(--neon3); background: rgba(255,62,108,0.08); }
+.ctrl-btn.on:hover { background: rgba(255,62,108,0.15); }
+
+.footer-right {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text3);
+  letter-spacing: 0.1em;
+}
+
+/* ─── NOTIFICATION TOAST ─── */
+.toast-container {
+  position: fixed;
+  top: 70px; right: 20px;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  background: var(--panel2);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  padding: 10px 16px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  max-width: 280px;
+}
+@keyframes toastIn {
+  from { opacity:0; transform: translateX(20px); }
+  to { opacity:1; transform: translateX(0); }
+}
+.toast.neon { border-color: var(--neon); }
+.toast.cyan { border-color: var(--neon2); }
+.toast.amber { border-color: var(--neon4); }
+.toast.red { border-color: var(--neon3); }
+
+/* ─── Responsive ─── */
+@media (max-width: 1100px) {
+  main { grid-template-columns: 260px 1fr; }
+  .right-panel { display: none; }
+}
+@media (max-width: 760px) {
+  main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .panel { border-right: none; border-bottom: 1px solid var(--border); }
+  .video-arena { grid-template-columns: 1fr; height: 50vw; min-height: 200px; }
+}
+</style>
+</head>
+<body>
+
+<div class="ambience ambience-1"></div>
+<div class="ambience ambience-2"></div>
+<div class="ambience ambience-3"></div>
+
+<div class="app">
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header>
+  <div class="logo">
+    <div class="logo-mark"></div>
+    <div>
+      <div class="logo-text">PEERLINK</div>
+      <div class="logo-sub">WebRTC Terminal v2.0</div>
+    </div>
+  </div>
+  <div class="status-strip">
+    <div class="status-item">
+      <div class="status-dot" id="dotIce"></div>
+      <span id="lblIce">ICE: IDLE</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot" id="dotConn"></div>
+      <span id="lblConn">CONN: OFFLINE</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot" id="dotData"></div>
+      <span id="lblData">DATA: CLOSED</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot" id="dotStream"></div>
+      <span id="lblStream">STREAM: OFF</span>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main>
+
+  <!-- ──── LEFT PANEL ──── -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Connection Setup</span>
+      <span class="panel-badge" id="peerState">DISCONNECTED</span>
+    </div>
+
+    <!-- Role + STUN -->
+    <div class="setup-section">
+      <div class="section-label">01 — Role</div>
+      <div class="btn-row">
+        <button class="btn btn-neon btn-full" id="btnCaller" onclick="initCaller()">📡 Caller</button>
+        <button class="btn btn-cyan btn-full" id="btnCallee" onclick="initCallee()">📶 Callee</button>
+      </div>
+      <div class="field-group" style="margin-top:4px;">
+        <div class="field-label">STUN Server</div>
+        <input class="inp" id="stunUrl" value="stun:stun.l.google.com:19302" />
+      </div>
+    </div>
+
+    <!-- SDP exchange -->
+    <div class="setup-section">
+      <div class="section-label">02 — SDP Exchange</div>
+      <div class="field-group">
+        <div class="field-label">Local SDP (copy &amp; send to peer)</div>
+        <textarea class="inp" id="localSDP" readonly placeholder="Awaiting..."></textarea>
+        <button class="btn btn-ghost btn-sm" onclick="copySDP('local')">⎘ Copy Local SDP</button>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Remote SDP (paste from peer)</div>
+        <textarea class="inp" id="remoteSDP" placeholder="Paste remote SDP here..."></textarea>
+        <button class="btn btn-cyan btn-full" id="btnSetRemote" onclick="applyRemoteSDP()" disabled>▶ Apply Remote SDP</button>
+      </div>
+    </div>
+
+    <!-- Media toggles -->
+    <div class="setup-section">
+      <div class="section-label">03 — Media Options</div>
+      <div class="toggle-row">
+        <span class="toggle-label">Video</span>
+        <label class="toggle">
+          <input type="checkbox" id="toggleVideo" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Audio</span>
+        <label class="toggle">
+          <input type="checkbox" id="toggleAudio" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Data Channel</span>
+        <label class="toggle">
+          <input type="checkbox" id="toggleData" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Echo Cancellation</span>
+        <label class="toggle">
+          <input type="checkbox" id="toggleEcho" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="setup-section" style="border-bottom:none; flex:1;">
+      <div class="section-label">04 — Stats</div>
+      <div class="stat-grid">
+        <div class="stat-cell">
+          <div class="stat-value" id="statRTT">—<span class="stat-unit">ms</span></div>
+          <div class="stat-name">Round Trip</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value" id="statBW">—<span class="stat-unit">kb/s</span></div>
+          <div class="stat-name">Bandwidth</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value" id="statPkts">0</div>
+          <div class="stat-name">Packets Sent</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value" id="statLoss">0<span class="stat-unit">%</span></div>
+          <div class="stat-name">Pkt Loss</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── CENTER PANEL ──── -->
+  <div class="center-panel">
+
+    <!-- Video arena -->
+    <div class="video-arena">
+      <!-- Local -->
+      <div class="video-cell local">
+        <div class="speaking-ring" id="localRing"></div>
+        <video id="localVideo" autoplay muted playsinline></video>
+        <div class="no-stream" id="localNoStream">
+          <div class="no-stream-icon">📷</div>
+          <p>LOCAL STREAM OFFLINE</p>
+        </div>
+        <div class="video-overlay">
+          <span class="video-label">⬤ LOCAL</span>
+          <span class="video-meta" id="localMeta">—</span>
+        </div>
+      </div>
+      <!-- Remote -->
+      <div class="video-cell">
+        <div class="speaking-ring" id="remoteRing"></div>
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="no-stream" id="remoteNoStream">
+          <div class="no-stream-icon">📡</div>
+          <p>AWAITING REMOTE STREAM</p>
+        </div>
+        <div class="video-overlay">
+          <span class="video-label">◎ REMOTE</span>
+          <span class="video-meta" id="remoteMeta">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs: Oscilloscope / Frequency / Data / Files -->
+    <div class="viz-section">
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('osc', this)">Oscilloscope</div>
+        <div class="tab" onclick="switchTab('freq', this)">Spectrum</div>
+        <div class="tab" onclick="switchTab('data', this)">Data Channel</div>
+        <div class="tab" onclick="switchTab('files', this)">File Transfer</div>
+      </div>
+
+      <!-- Oscilloscope -->
+      <div class="tab-content active" id="tab-osc">
+        <div class="canvas-wrap">
+          <canvas id="oscCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Frequency Spectrum -->
+      <div class="tab-content" id="tab-freq">
+        <div class="canvas-wrap">
+          <canvas id="freqCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Data Channel -->
+      <div class="tab-content" id="tab-data">
+        <div class="data-panel">
+          <div class="data-log" id="dataLog">
+            <div class="log-entry">
+              <span class="log-time">00:00:00</span>
+              <span class="log-dir sys">SYS</span>
+              <span class="log-text">PeerLink WebRTC terminal ready. Select Caller or Callee to begin.</span>
+            </div>
+          </div>
+          <div class="data-input-row">
+            <input class="inp" id="dataInput" placeholder="Type message to peer..." style="flex:1;" onkeydown="if(event.key==='Enter') sendDataMsg()" />
+            <button class="btn btn-neon btn-sm" onclick="sendDataMsg()">SEND →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- File Transfer -->
+      <div class="tab-content" id="tab-files">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput" onchange="handleFileSelect()" />
+          <div class="drop-icon">📦</div>
+          <div>DROP FILE OR CLICK TO SELECT</div>
+          <div style="margin-top:6px; font-size:0.62rem; color:var(--text3);">Transfers via WebRTC DataChannel</div>
+        </div>
+        <div class="transfer-progress" id="transferProgress">
+          <div class="progress-label">
+            <span id="progressName">file.bin</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressFill"></div>
+          </div>
+        </div>
+        <div class="data-log" id="fileLog" style="flex:1; max-height:none;">
+          <div class="log-entry">
+            <span class="log-time">—</span>
+            <span class="log-dir sys">SYS</span>
+            <span class="log-text">File transfer ready. Connect peers first.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── RIGHT PANEL ──── -->
+  <div class="panel right-panel">
+    <div class="panel-header">
+      <span class="panel-title">Signal Inspector</span>
+      <span class="panel-badge">LIVE</span>
+    </div>
+
+    <!-- State steps -->
+    <div style="padding: 14px 16px 0; border-bottom: 1px solid var(--border); flex-shrink:0;">
+      <div class="section-label" style="margin-bottom:10px;">Connection Handshake</div>
+      <div class="state-diagram" style="padding:0 0 14px;">
+        <div class="state-step" id="step-init"><div class="state-indicator"></div>Initialize PeerConnection</div>
+        <div class="state-step" id="step-offer"><div class="state-indicator"></div>Create / Receive Offer</div>
+        <div class="state-step" id="step-answer"><div class="state-indicator"></div>Create / Receive Answer</div>
+        <div class="state-step" id="step-ice"><div class="state-indicator"></div>ICE Gathering</div>
+        <div class="state-step" id="step-connected"><div class="state-indicator"></div>Peers Connected</div>
+        <div class="state-step" id="step-data"><div class="state-indicator"></div>Data Channel Open</div>
+      </div>
+    </div>
+
+    <!-- ICE Candidates -->
+    <div class="panel-header" style="border-top:1px solid var(--border);">
+      <span class="panel-title">ICE Candidates</span>
+      <span class="panel-badge" id="iceCount">0</span>
+    </div>
+    <div class="ice-list" id="iceList">
+      <div style="color:var(--text3); font-family:'Share Tech Mono',monospace; font-size:0.65rem; padding:4px 0; text-align:center;">
+        Waiting for candidates...
+      </div>
+    </div>
+
+    <!-- SDP Inspector -->
+    <div class="panel-header" style="border-top:1px solid var(--border);">
+      <span class="panel-title">SDP Inspector</span>
+      <button class="btn btn-ghost btn-xs" onclick="toggleSdpInspect()">TOGGLE</button>
+    </div>
+    <div class="sdp-display" id="sdpInspect" style="max-height:180px; display:none;">Awaiting SDP...</div>
+
+    <!-- Network info -->
+    <div class="panel-header" style="border-top:1px solid var(--border); margin-top:auto; flex-shrink:0;">
+      <span class="panel-title">Network</span>
+    </div>
+    <div style="padding:14px 16px; font-family:'Share Tech Mono',monospace; font-size:0.68rem; color:var(--text2); line-height:2;">
+      <div>LOCAL IP: <span id="netLocalIp" style="color:var(--neon);">—</span></div>
+      <div>PROTOCOL: <span id="netProto" style="color:var(--neon);">—</span></div>
+      <div>CANDIDATES: <span id="netCandidates" style="color:var(--neon);">—</span></div>
+      <div>CODEC: <span id="netCodec" style="color:var(--neon);">—</span></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer>
+  <div class="footer-controls">
+    <button class="ctrl-btn" id="btnMic" onclick="toggleMic()">🎙️ MIC ON</button>
+    <button class="ctrl-btn" id="btnCam" onclick="toggleCam()">📷 CAM ON</button>
+    <button class="ctrl-btn" id="btnScreen" onclick="toggleScreen()">🖥️ SCREEN</button>
+    <button class="btn btn-red btn-sm" id="btnHangup" onclick="hangup()" disabled>⏹ DISCONNECT</button>
+  </div>
+  <div class="footer-right">
+    WEBRTC · DTLS-SRTP · <span id="footerTime">--:--:--</span>
+  </div>
+</footer>
+
+</div><!-- .app -->
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ══════════════ SCRIPTS ══════════════ -->
+<script>
+'use strict';
+
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+const S = {
+  pc: null,
+  dc: null,              // data channel
+  localStream: null,
+  remoteStream: null,
+  screenStream: null,
+  audioCtx: null,
+  analyserL: null,       // local audio analyser
+  analyserR: null,       // remote audio analyser
+  role: null,            // 'caller' | 'callee'
+  iceCandidates: [],
+  micOn: true,
+  camOn: true,
+  screenOn: false,
+  connected: false,
+  startTime: null,
+  statsInterval: null,
+  animFrame: null,
+  fileBuffer: [],
+  fileInfo: null,
+  fileReceived: 0,
+};
+
+// File chunking
+const CHUNK = 16384; // 16KB chunks
+
+// ─────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────
+function ts() {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+}
+
+function logData(dir, text) {
+  const log = document.getElementById('dataLog');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">${ts()}</span><span class="log-dir ${dir}">${dir.toUpperCase().slice(0,4)}</span><span class="log-text">${escHtml(text)}</span>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function logFile(dir, text) {
+  const log = document.getElementById('fileLog');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">${ts()}</span><span class="log-dir ${dir}">${dir.toUpperCase().slice(0,4)}</span><span class="log-text">${escHtml(text)}</span>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toast(msg, type='neon') {
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${msg}</span>`;
+  c.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transform='translateX(20px)'; el.style.transition='all 0.3s'; setTimeout(()=>el.remove(),300); }, 3000);
+}
+
+function setStatus(id, label, state) {
+  const dot = document.getElementById(`dot${id}`);
+  const lbl = document.getElementById(`lbl${id}`);
+  dot.className = 'status-dot' + (state ? ` ${state}` : '');
+  lbl.textContent = label;
+}
+
+function setStep(id, state) {
+  const el = document.getElementById(`step-${id}`);
+  if (el) { el.className = `state-step ${state||''}`; }
+}
+
+function formatBytes(b) {
+  if (b < 1024) return `${b}B`;
+  if (b < 1048576) return `${(b/1024).toFixed(1)}KB`;
+  return `${(b/1048576).toFixed(2)}MB`;
+}
+
+// Clock
+setInterval(() => {
+  document.getElementById('footerTime').textContent = ts();
+}, 1000);
+
+// ─────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ─────────────────────────────────────────
+// PEER CONNECTION FACTORY
+// ─────────────────────────────────────────
+function getIceConfig() {
+  return { iceServers: [{ urls: document.getElementById('stunUrl').value.trim() }] };
+}
+
+function buildPC() {
+  const pc = new RTCPeerConnection(getIceConfig());
+
+  // ICE events
+  pc.onicecandidate = (e) => {
+    if (e.candidate) {
+      addIceRow(e.candidate);
+      // In production you'd signal this; here we bundle into SDP
+    } else {
+      // ICE gathering complete — finalize local SDP
+      const sdp = pc.localDescription.sdp;
+      document.getElementById('localSDP').value = sdp;
+      document.getElementById('sdpInspect').textContent = sdp;
+      document.getElementById('btnSetRemote').disabled = false;
+      setStatus('Ice', 'ICE: DONE', 'active');
+      setStep('ice', 'done');
+      toast('ICE gathering complete — copy SDP to peer', 'neon');
+    }
+  };
+
+  pc.onicegatheringstatechange = () => {
+    setStatus('Ice', `ICE: ${pc.iceGatheringState.toUpperCase()}`, pc.iceGatheringState === 'complete' ? 'active' : '');
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    const s = pc.iceConnectionState;
+    const map = { checking:'warn', connected:'active', failed:'error', disconnected:'error' };
+    setStatus('Conn', `CONN: ${s.toUpperCase()}`, map[s] || '');
+    document.getElementById('peerState').textContent = s.toUpperCase();
+    if (s === 'connected' || s === 'completed') {
+      setStep('connected', 'done');
+      S.connected = true;
+      S.startTime = S.startTime || Date.now();
+      document.getElementById('btnHangup').disabled = false;
+      startStatsLoop();
+      toast('Peers connected!', 'neon');
+    }
+    if (s === 'failed' || s === 'disconnected') {
+      toast('Connection lost: ' + s, 'red');
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    const s = pc.connectionState;
+    if (s === 'failed') toast('PeerConnection failed', 'red');
+  };
+
+  // Remote stream
+  pc.ontrack = (e) => {
+    S.remoteStream = S.remoteStream || new MediaStream();
+    S.remoteStream.addTrack(e.track);
+    const vid = document.getElementById('remoteVideo');
+    vid.srcObject = S.remoteStream;
+    document.getElementById('remoteNoStream').style.display = 'none';
+    setStatus('Stream', 'STREAM: ACTIVE', 'active');
+    document.getElementById('remoteMeta').textContent = e.track.kind.toUpperCase();
+    setupRemoteAnalyser();
+    toast('Remote stream received', 'cyan');
+  };
+
+  // Data channel (receiver side)
+  pc.ondatachannel = (e) => {
+    S.dc = e.channel;
+    hookDataChannel();
+  };
+
+  return pc;
+}
+
+// ─────────────────────────────────────────
+// DATA CHANNEL
+// ─────────────────────────────────────────
+function hookDataChannel() {
+  const dc = S.dc;
+  dc.binaryType = 'arraybuffer';
+
+  dc.onopen = () => {
+    setStatus('Data', 'DATA: OPEN', 'active');
+    setStep('data', 'done');
+    logData('sys', 'DataChannel opened — ready for messages and files');
+    toast('Data channel open', 'cyan');
+  };
+
+  dc.onclose = () => {
+    setStatus('Data', 'DATA: CLOSED', '');
+    setStep('data', '');
+    logData('sys', 'DataChannel closed');
+  };
+
+  dc.onerror = (e) => {
+    logData('err', 'DataChannel error: ' + e.message);
+  };
+
+  dc.onmessage = (e) => {
+    if (typeof e.data === 'string') {
+      let obj;
+      try { obj = JSON.parse(e.data); } catch { obj = null; }
+      if (obj && obj.__type === 'file-meta') {
+        // Incoming file transfer start
+        S.fileInfo = obj;
+        S.fileBuffer = [];
+        S.fileReceived = 0;
+        logFile('recv', `Incoming file: ${obj.name} (${formatBytes(obj.size)})`);
+        showProgress(obj.name, 0);
+      } else if (obj && obj.__type === 'file-done') {
+        const blob = new Blob(S.fileBuffer, { type: S.fileInfo.type || 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = S.fileInfo.name;
+        a.click();
+        hideProgress();
+        logFile('recv', `File received: ${S.fileInfo.name} — auto-downloaded`);
+        toast(`File received: ${S.fileInfo.name}`, 'cyan');
+        S.fileBuffer = []; S.fileInfo = null;
+      } else {
+        logData('recv', e.data);
+      }
+    } else {
+      // Binary: file chunk
+      if (S.fileInfo) {
+        S.fileBuffer.push(e.data);
+        S.fileReceived += e.data.byteLength;
+        const pct = Math.round((S.fileReceived / S.fileInfo.size) * 100);
+        updateProgress(pct);
+      }
+    }
+  };
+}
+
+function sendDataMsg() {
+  const inp = document.getElementById('dataInput');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  if (!S.dc || S.dc.readyState !== 'open') { toast('Data channel not open', 'red'); return; }
+  S.dc.send(msg);
+  logData('send', msg);
+  inp.value = '';
+}
+
+// ─────────────────────────────────────────
+// FILE TRANSFER
+// ─────────────────────────────────────────
+function handleFileSelect() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) return;
+  sendFile(file);
+}
+
+// Drag and drop
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) sendFile(file);
+});
+
+async function sendFile(file) {
+  if (!S.dc || S.dc.readyState !== 'open') { toast('Connect peers first', 'red'); return; }
+  logFile('send', `Sending: ${file.name} (${formatBytes(file.size)})`);
+  showProgress(file.name, 0);
+  // Send metadata
+  S.dc.send(JSON.stringify({ __type: 'file-meta', name: file.name, size: file.size, type: file.type }));
+  // Send chunks
+  let offset = 0;
+  while (offset < file.size) {
+    const chunk = file.slice(offset, offset + CHUNK);
+    const buf = await chunk.arrayBuffer();
+    // Wait for buffer to drain
+    while (S.dc.bufferedAmount > 1048576) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    S.dc.send(buf);
+    offset += buf.byteLength;
+    const pct = Math.round((offset / file.size) * 100);
+    updateProgress(pct);
+  }
+  S.dc.send(JSON.stringify({ __type: 'file-done' }));
+  hideProgress();
+  logFile('send', `File sent: ${file.name}`);
+  toast(`File sent: ${file.name}`, 'neon');
+}
+
+function showProgress(name, pct) {
+  const p = document.getElementById('transferProgress');
+  p.style.display = 'flex';
+  document.getElementById('progressName').textContent = name;
+  updateProgress(pct);
+}
+function updateProgress(pct) {
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+function hideProgress() {
+  setTimeout(() => { document.getElementById('transferProgress').style.display = 'none'; }, 1500);
+}
+
+// ─────────────────────────────────────────
+// CALLER FLOW
+// ─────────────────────────────────────────
+async function initCaller() {
+  S.role = 'caller';
+  document.getElementById('peerState').textContent = 'CALLER';
+  logData('sys', 'Role: CALLER — getting media...');
+  setStep('init', 'active');
+
+  S.localStream = await getMedia();
+  if (!S.localStream) return;
+
+  S.pc = buildPC();
+
+  // Data channel (caller creates)
+  if (document.getElementById('toggleData').checked) {
+    S.dc = S.pc.createDataChannel('peerlink', { ordered: true });
+    hookDataChannel();
+  }
+
+  // Add tracks
+  S.localStream.getTracks().forEach(t => S.pc.addTrack(t, S.localStream));
+  setStep('init', 'done');
+
+  // Create offer
+  setStep('offer', 'active');
+  const offer = await S.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+  await S.pc.setLocalDescription(offer);
+  logData('sys', 'Offer created — gathering ICE...');
+  setStep('offer', 'done');
+  toast('Caller ready — waiting for ICE...', 'neon');
+}
+
+// ─────────────────────────────────────────
+// CALLEE FLOW
+// ─────────────────────────────────────────
+async function initCallee() {
+  S.role = 'callee';
+  document.getElementById('peerState').textContent = 'CALLEE';
+  logData('sys', 'Role: CALLEE — paste Caller SDP and click Apply');
+  setStep('init', 'active');
+
+  S.localStream = await getMedia();
+  if (!S.localStream) return;
+
+  S.pc = buildPC();
+  S.localStream.getTracks().forEach(t => S.pc.addTrack(t, S.localStream));
+  setStep('init', 'done');
+  toast('Callee ready — paste remote SDP to continue', 'cyan');
+}
+
+// ─────────────────────────────────────────
+// APPLY REMOTE SDP
+// ─────────────────────────────────────────
+async function applyRemoteSDP() {
+  const sdpText = document.getElementById('remoteSDP').value.trim();
+  if (!sdpText) { toast('Paste remote SDP first', 'amber'); return; }
+  if (!S.pc) { toast('Initialize a role first', 'amber'); return; }
+
+  try {
+    if (S.role === 'callee') {
+      // Callee receives offer → sets remote → creates answer
+      setStep('offer', 'active');
+      await S.pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: sdpText }));
+      setStep('offer', 'done');
+      setStep('answer', 'active');
+      const answer = await S.pc.createAnswer();
+      await S.pc.setLocalDescription(answer);
+      setStep('answer', 'done');
+      logData('sys', 'Answer created — gathering ICE...');
+      toast('Answer created — copy Local SDP to caller', 'cyan');
+    } else {
+      // Caller receives answer
+      setStep('answer', 'active');
+      await S.pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: sdpText }));
+      setStep('answer', 'done');
+      setStep('ice', 'active');
+      logData('sys', 'Remote answer applied — connecting...');
+      toast('Remote SDP applied — connecting...', 'neon');
+    }
+  } catch(e) {
+    toast('SDP error: ' + e.message, 'red');
+    logData('err', 'SDP error: ' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────
+// GET MEDIA
+// ─────────────────────────────────────────
+async function getMedia() {
+  const wantVideo = document.getElementById('toggleVideo').checked;
+  const wantAudio = document.getElementById('toggleAudio').checked;
+  const echoCancellation = document.getElementById('toggleEcho').checked;
+
+  if (!wantVideo && !wantAudio) {
+    logData('sys', 'Media disabled — data channel only');
+    return new MediaStream(); // empty stream
+  }
+
+  const constraints = {
+    video: wantVideo ? { width:{ideal:1280}, height:{ideal:720}, frameRate:{ideal:30} } : false,
+    audio: wantAudio ? { echoCancellation, noiseSuppression: true, autoGainControl: true } : false,
+  };
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const vid = document.getElementById('localVideo');
+    vid.srcObject = stream;
+    document.getElementById('localNoStream').style.display = 'none';
+    const vTrack = stream.getVideoTracks()[0];
+    const aTrack = stream.getAudioTracks()[0];
+    if (vTrack) { document.getElementById('localMeta').textContent = vTrack.label.slice(0,24) || 'CAM'; }
+    setStatus('Stream', 'STREAM: LOCAL', 'active');
+    setupLocalAnalyser(stream);
+    toast('Local media ready', 'neon');
+    return stream;
+  } catch(e) {
+    logData('err', 'getUserMedia error: ' + e.message);
+    toast('Media error: ' + e.message, 'red');
+    setStatus('Stream', 'STREAM: ERROR', 'error');
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────
+// AUDIO VISUALIZERS
+// ─────────────────────────────────────────
+function setupLocalAnalyser(stream) {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  S.audioCtx = S.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  const src = S.audioCtx.createMediaStreamSource(stream);
+  S.analyserL = S.audioCtx.createAnalyser();
+  S.analyserL.fftSize = 2048;
+  src.connect(S.analyserL);
+  startVisualizer();
+}
+
+function setupRemoteAnalyser() {
+  if (!S.audioCtx || !S.remoteStream) return;
+  const src = S.audioCtx.createMediaStreamSource(S.remoteStream);
+  S.analyserR = S.audioCtx.createAnalyser();
+  S.analyserR.fftSize = 2048;
+  src.connect(S.analyserR);
+}
+
+// Speaking detection
+function detectSpeaking() {
+  if (S.analyserL) {
+    const buf = new Uint8Array(S.analyserL.frequencyBinCount);
+    S.analyserL.getByteFrequencyData(buf);
+    const avg = buf.reduce((a,b)=>a+b,0)/buf.length;
+    document.getElementById('localRing').classList.toggle('active', avg > 15);
+  }
+  if (S.analyserR) {
+    const buf = new Uint8Array(S.analyserR.frequencyBinCount);
+    S.analyserR.getByteFrequencyData(buf);
+    const avg = buf.reduce((a,b)=>a+b,0)/buf.length;
+    document.getElementById('remoteRing').classList.toggle('active', avg > 15);
+  }
+}
+
+// Oscilloscope
+function drawOscilloscope() {
+  const canvas = document.getElementById('oscCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  const W = canvas.width, H = canvas.height;
+
+  ctx.fillStyle = '#060810';
+  ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0,255,180,0.05)';
+  ctx.lineWidth = 0.5;
+  for (let x=0; x<W; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y=0; y<H; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // Local waveform
+  if (S.analyserL) {
+    const buf = new Uint8Array(S.analyserL.fftSize);
+    S.analyserL.getByteTimeDomainData(buf);
+    ctx.beginPath();
+    ctx.strokeStyle = '#00ffb4';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#00ffb4';
+    ctx.shadowBlur = 6;
+    buf.forEach((v,i) => {
+      const x = (i/buf.length)*W, y = ((v/128)-1)*H/2 + H/2;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  } else {
+    // Flat line
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(0,255,180,0.2)'; ctx.lineWidth=1;
+    ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
+  }
+
+  // Remote waveform
+  if (S.analyserR) {
+    const buf = new Uint8Array(S.analyserR.fftSize);
+    S.analyserR.getByteTimeDomainData(buf);
+    ctx.beginPath();
+    ctx.strokeStyle = '#00c8ff';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#00c8ff';
+    ctx.shadowBlur = 6;
+    buf.forEach((v,i) => {
+      const x = (i/buf.length)*W, y = ((v/128)-1)*H/2 + H/2;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Legend
+  ctx.font = '9px Share Tech Mono'; ctx.fillStyle = '#00ffb4'; ctx.fillText('■ LOCAL', 10, 14);
+  ctx.fillStyle = '#00c8ff'; ctx.fillText('■ REMOTE', 70, 14);
+}
+
+// Frequency spectrum
+function drawSpectrum() {
+  const canvas = document.getElementById('freqCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  const W = canvas.width, H = canvas.height;
+
+  ctx.fillStyle = '#060810';
+  ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0,255,180,0.04)';
+  ctx.lineWidth = 0.5;
+  for (let x=0; x<W; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y=0; y<H; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  function drawBars(analyser, color, glow, offset) {
+    if (!analyser) return;
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(buf);
+    const barW = (W / buf.length) * 2.5;
+    const step = Math.ceil(buf.length / (W / (barW+1)));
+    ctx.shadowColor = glow; ctx.shadowBlur = 8;
+    buf.forEach((v,i) => {
+      if (i % step !== 0) return;
+      const x = (i / buf.length) * W;
+      const h = (v / 255) * H;
+      const grad = ctx.createLinearGradient(x, H-h, x, H);
+      grad.addColorStop(0, color);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x + offset, H - h, barW, h);
+    });
+    ctx.shadowBlur = 0;
+  }
+
+  drawBars(S.analyserL, '#00ffb4', '#00ffb4', 0);
+  drawBars(S.analyserR, '#00c8ff', '#00c8ff', 2);
+
+  ctx.font = '9px Share Tech Mono';
+  ctx.fillStyle = '#00ffb4'; ctx.fillText('■ LOCAL', 10, 14);
+  ctx.fillStyle = '#00c8ff'; ctx.fillText('■ REMOTE', 70, 14);
+}
+
+function startVisualizer() {
+  if (S.animFrame) return;
+  function loop() {
+    detectSpeaking();
+    const oscActive = document.getElementById('tab-osc').classList.contains('active');
+    const freqActive = document.getElementById('tab-freq').classList.contains('active');
+    if (oscActive) drawOscilloscope();
+    if (freqActive) drawSpectrum();
+    S.animFrame = requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// ─────────────────────────────────────────
+// CONTROLS
+// ─────────────────────────────────────────
+function toggleMic() {
+  if (!S.localStream) return;
+  S.micOn = !S.micOn;
+  S.localStream.getAudioTracks().forEach(t => t.enabled = S.micOn);
+  const btn = document.getElementById('btnMic');
+  btn.textContent = `🎙️ MIC ${S.micOn?'ON':'OFF'}`;
+  btn.className = `ctrl-btn${S.micOn?'':' on'}`;
+  toast(`Microphone ${S.micOn?'unmuted':'muted'}`, S.micOn?'neon':'amber');
+}
+
+function toggleCam() {
+  if (!S.localStream) return;
+  S.camOn = !S.camOn;
+  S.localStream.getVideoTracks().forEach(t => t.enabled = S.camOn);
+  const btn = document.getElementById('btnCam');
+  btn.textContent = `📷 CAM ${S.camOn?'ON':'OFF'}`;
+  btn.className = `ctrl-btn${S.camOn?'':' on'}`;
+  document.getElementById('localNoStream').style.display = S.camOn ? 'none' : 'flex';
+  toast(`Camera ${S.camOn?'on':'off'}`, S.camOn?'neon':'amber');
+}
+
+async function toggleScreen() {
+  if (!S.pc) { toast('Connect first', 'red'); return; }
+  if (!S.screenOn) {
+    try {
+      S.screenStream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:true });
+      S.screenOn = true;
+      const btn = document.getElementById('btnScreen');
+      btn.textContent = '🖥️ SCREEN ON'; btn.className = 'ctrl-btn on';
+      const vTrack = S.screenStream.getVideoTracks()[0];
+      const sender = S.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+      if (sender) sender.replaceTrack(vTrack);
+      // Show screen in local video
+      const combined = new MediaStream([vTrack, ...S.localStream.getAudioTracks()]);
+      document.getElementById('localVideo').srcObject = combined;
+      vTrack.onended = () => { if(S.screenOn) toggleScreen(); };
+      toast('Screen sharing started', 'neon');
+    } catch(e) { toast('Screen share cancelled', 'amber'); }
+  } else {
+    if (S.screenStream) { S.screenStream.getTracks().forEach(t=>t.stop()); S.screenStream=null; }
+    S.screenOn = false;
+    document.getElementById('btnScreen').textContent = '🖥️ SCREEN';
+    document.getElementById('btnScreen').className = 'ctrl-btn';
+    // Restore camera track
+    const vTrack = S.localStream?.getVideoTracks()[0];
+    if (vTrack) {
+      const sender = S.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+      if (sender) sender.replaceTrack(vTrack);
+      document.getElementById('localVideo').srcObject = S.localStream;
+    }
+    toast('Screen sharing stopped', 'amber');
+  }
+}
+
+function hangup() {
+  if (S.pc) { S.pc.close(); S.pc = null; }
+  if (S.dc) { S.dc.close(); S.dc = null; }
+  if (S.localStream) { S.localStream.getTracks().forEach(t=>t.stop()); S.localStream=null; }
+  if (S.screenStream) { S.screenStream.getTracks().forEach(t=>t.stop()); S.screenStream=null; }
+  if (S.statsInterval) { clearInterval(S.statsInterval); S.statsInterval=null; }
+  if (S.animFrame) { cancelAnimationFrame(S.animFrame); S.animFrame=null; }
+  document.getElementById('localVideo').srcObject = null;
+  document.getElementById('remoteVideo').srcObject = null;
+  document.getElementById('localNoStream').style.display = 'flex';
+  document.getElementById('remoteNoStream').style.display = 'flex';
+  document.getElementById('localSDP').value = '';
+  document.getElementById('remoteSDP').value = '';
+  document.getElementById('btnSetRemote').disabled = true;
+  document.getElementById('btnHangup').disabled = true;
+  document.getElementById('iceList').innerHTML = '<div style="color:var(--text3);font-family:\'Share Tech Mono\',monospace;font-size:0.65rem;padding:4px 0;text-align:center;">Waiting for candidates...</div>';
+  document.getElementById('iceCount').textContent = '0';
+  S.iceCandidates = []; S.connected = false; S.role = null;
+  ['init','offer','answer','ice','connected','data'].forEach(s => setStep(s,''));
+  setStatus('Ice','ICE: IDLE',''); setStatus('Conn','CONN: OFFLINE','');
+  setStatus('Data','DATA: CLOSED',''); setStatus('Stream','STREAM: OFF','');
+  document.getElementById('peerState').textContent = 'DISCONNECTED';
+  logData('sys', 'Disconnected');
+  toast('Disconnected', 'red');
+}
+
+// ─────────────────────────────────────────
+// ICE DISPLAY
+// ─────────────────────────────────────────
+function addIceRow(c) {
+  S.iceCandidates.push(c);
+  const list = document.getElementById('iceList');
+  if (list.children.length === 1 && list.children[0].style.textAlign === 'center') {
+    list.innerHTML = '';
+  }
+  const typeMap = { host:'host', srflx:'srflx', relay:'relay', prflx:'srflx' };
+  const t = typeMap[c.type] || 'host';
+  const row = document.createElement('div');
+  row.className = 'ice-row';
+  row.innerHTML = `<span class="ice-type ${t}">${t}</span><span class="ice-addr">${c.address||c.candidate.split(' ')[4] || '—'}:${c.port||''}</span>`;
+  list.appendChild(row);
+  document.getElementById('iceCount').textContent = S.iceCandidates.length;
+}
+
+// ─────────────────────────────────────────
+// STATS LOOP
+// ─────────────────────────────────────────
+function startStatsLoop() {
+  if (S.statsInterval) return;
+  let prevBytes = 0;
+  S.statsInterval = setInterval(async () => {
+    if (!S.pc) return;
+    const reports = await S.pc.getStats();
+    reports.forEach(r => {
+      if (r.type === 'candidate-pair' && r.state === 'succeeded') {
+        document.getElementById('statRTT').innerHTML = `${r.currentRoundTripTime !== undefined ? (r.currentRoundTripTime*1000).toFixed(0) : '—'}<span class="stat-unit">ms</span>`;
+        const bytes = r.bytesSent || 0;
+        const kbps = ((bytes - prevBytes) * 8 / 1000).toFixed(1);
+        prevBytes = bytes;
+        document.getElementById('statBW').innerHTML = `${kbps}<span class="stat-unit">kb/s</span>`;
+        document.getElementById('netProto').textContent = r.relayProtocol || r.protocol || '—';
+        document.getElementById('netLocalIp').textContent = r.localCandidateId ? '...' : '—';
+      }
+      if (r.type === 'outbound-rtp' && r.kind === 'video') {
+        document.getElementById('statPkts').textContent = r.packetsSent || 0;
+      }
+      if (r.type === 'remote-inbound-rtp') {
+        const loss = r.fractionLost !== undefined ? (r.fractionLost*100).toFixed(1) : '0';
+        document.getElementById('statLoss').innerHTML = `${loss}<span class="stat-unit">%</span>`;
+      }
+      if (r.type === 'codec') {
+        document.getElementById('netCodec').textContent = r.mimeType || '—';
+      }
+      if (r.type === 'local-candidate') {
+        document.getElementById('netLocalIp').textContent = r.address || '—';
+        document.getElementById('netCandidates').textContent = `${r.candidateType || '—'}`;
+      }
+    });
+  }, 2000);
+}
+
+// ─────────────────────────────────────────
+// SDP COPY
+// ─────────────────────────────────────────
+function copySDP(which) {
+  const el = document.getElementById(which === 'local' ? 'localSDP' : 'remoteSDP');
+  if (!el.value) { toast('No SDP yet', 'amber'); return; }
+  navigator.clipboard.writeText(el.value).then(() => toast('SDP copied to clipboard', 'neon'));
+}
+
+function toggleSdpInspect() {
+  const el = document.getElementById('sdpInspect');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ─────────────────────────────────────────
+// INIT VISUAL
+// ─────────────────────────────────────────
+// Draw idle oscilloscope
+window.addEventListener('load', () => {
+  drawOscilloscope();
+  drawSpectrum();
+});
+
+window.addEventListener('resize', () => {
+  drawOscilloscope();
+  drawSpectrum();
+});
+</script>
+</body>
+</html>
