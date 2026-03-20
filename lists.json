@@ -11,10 +11,7 @@
     "name": "Deals API Amazon",
     "url": "https://getdeals.vercel.app/v2.html"
   },
-  {
-    "name": "Amazon Associate Adm",
-    "url": "https://openapi-wof3.onrender.com/public/update.html"
-  },
+
   {
     "name": "Text Compare Tool",
     "url": "https://akshay43215.github.io/utility_apps/compareText.html"
@@ -22,5 +19,17 @@
   {
     "name": "Image Text Extract Tool",
     "url": "https://akshay43215.github.io/utility_apps/extract.html"
+  },
+  {
+    "name": "WebRTC v0",
+    "url": "https://akshay43215.github.io/utility_apps/webCall.v0.html"
+  },
+  {
+    "name": "WebRTC v1",
+    "url": "https://akshay43215.github.io/utility_apps/webCall.v1.html"
+  },
+  {
+    "name": "IP Tracker",
+    "url": "https://akshay43215.github.io/utility_apps/myIp.html"
   }
 ]
