@@ -573,11 +573,29 @@ async function startScan() {
   });
 
   try {
-    // Fetch IPv4 — using ip-api.com which has full CORS support for file://
+    // ipinfo.io: HTTPS, genuinely open CORS (works on file:// AND GitHub Pages)
     let ipv4 = null, geo = {};
-    const geoRes = await fetch('http://ip-api.com/json/?fields=status,query,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as');
-    geo = await geoRes.json();
-    ipv4 = geo.query || null;
+    const geoRes = await fetch('https://ipinfo.io/json');
+    const raw = await geoRes.json();
+    ipv4 = raw.ip || null;
+    // Parse "lat,lon" from the "loc" field e.g. "12.9716,77.5946"
+    const [lat, lon] = (raw.loc || ',').split(',').map(Number);
+    // Normalize to expected field names used throughout the page
+    geo = {
+      query:        raw.ip,
+      country:      raw.country,
+      countryCode:  raw.country,
+      regionName:   raw.region,
+      city:         raw.city,
+      zip:          raw.postal,
+      lat,
+      lon,
+      timezone:     raw.timezone,
+      isp:          raw.org,
+      org:          raw.org,
+      as:           raw.org,
+      country_name: raw.country,
+    };
 
     // Fetch IPv6 — using icanhazip which returns plain text with CORS header
     let ipv6 = null;
