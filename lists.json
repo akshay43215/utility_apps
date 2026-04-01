@@ -31,5 +31,9 @@
   {
     "name": "IP Tracker",
     "url": "https://akshay43215.github.io/utility_apps/myIp.html"
+  },
+  {
+    "name": "Coin-Flip & Lucky-Spinner",
+    "url": "./Decisionspinner.html"
   }
 ]
