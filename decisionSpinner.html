@@ -1069,20 +1069,19 @@ function renderWheel() {
   ctx.stroke();
 }
 
-function getWinner(finalAngle) {
+function getWinner(angle) {
   const total = totalWeight();
-  // The pointer is at top (270deg = -PI/2 in canvas coords)
-  // Normalize angle to [0, 2PI)
-  let a = ((-finalAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-  // The "top" of canvas is at -PI/2 from right, which is 3PI/2 from 0
-  // Canvas 0 angle = right, pointer = top = -PI/2 = 3*PI/2
-  // Adjust so 0 = top
-  a = (a + Math.PI / 2) % (Math.PI * 2);
+  // Pointer sits at the top of the canvas = -PI/2 in canvas coordinates.
+  // The wheel renders segments starting from `angle` (currentAngle).
+  // We need to find where -PI/2 falls in the wheel's own frame:
+  //   localAngle = (pointerAngle - angle) mod 2PI
+  const pointerAngle = -Math.PI / 2;
+  let localAngle = ((pointerAngle - angle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
 
   let cumulative = 0;
   for (let seg of segments) {
     cumulative += (parseFloat(seg.weight) || 1) / total * Math.PI * 2;
-    if (a < cumulative) return seg;
+    if (localAngle < cumulative) return seg;
   }
   return segments[segments.length - 1];
 }
